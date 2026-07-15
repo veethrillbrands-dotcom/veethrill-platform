@@ -46,7 +46,7 @@ export default async function MaintenancePage() {
             <CardTitle sub={`${orders.length} total work orders — click status badge to update`}>Work Order Queue</CardTitle>
           </CardHeader>
           <CardBody noPad>
-            <WorkOrdersTable orders={orders} />
+            <WorkOrdersTable orders={orders as any} />
           </CardBody>
         </Card>
 

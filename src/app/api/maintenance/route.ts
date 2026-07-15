@@ -37,11 +37,18 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { propertyId, unitId, title, description, category, priority, estimatedCost, slaHours } = body;
+    const {
+      propertyId, unitId, title, description, category, priority, estimatedCost, slaHours,
+      vendorId, outsourcedVendorName, outsourcedVendorPhone, status,
+    } = body;
 
     if (!propertyId || !title || !description || !category) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
+
+    const outsourcedNote = outsourcedVendorName
+      ? `[EXT_VENDOR:${outsourcedVendorName}${outsourcedVendorPhone ? `|${outsourcedVendorPhone}` : ""}]`
+      : undefined;
 
     const workOrder = await db.workOrder.create({
       data: {
@@ -50,9 +57,11 @@ export async function POST(req: Request) {
         priority: priority || "MEDIUM",
         estimatedCost,
         slaHours: slaHours || 24,
-        status: "OPEN",
+        status: status || "OPEN",
+        ...(vendorId && { vendorId, assignedAt: new Date() }),
+        ...(outsourcedNote && { completionNotes: outsourcedNote }),
       },
-      include: { property: true, unit: true },
+      include: { property: true, unit: true, vendor: { include: { user: true } } },
     });
 
     return NextResponse.json(workOrder, { status: 201 });

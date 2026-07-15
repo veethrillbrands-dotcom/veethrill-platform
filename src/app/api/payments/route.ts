@@ -37,19 +37,20 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { tenantId, leaseId, amount, type, method, dueDate, notes } = body;
+    const { tenantId, leaseId, amount, type, method, dueDate, notes, status } = body;
 
     if (!tenantId || !amount || !type || !method || !dueDate) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const paymentStatus = status === "PARTIAL" ? "PARTIAL" : "PAID";
     const reference = `VT-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
     const payment = await db.payment.create({
       data: {
         tenantId, leaseId,
         amount, type, method,
-        status: "PAID",
+        status: paymentStatus,
         reference,
         dueDate: new Date(dueDate),
         paidAt: new Date(),
