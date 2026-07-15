@@ -1,4 +1,4 @@
-import { Topbar } from "@/components/layout/Topbar";
+import { MaintenanceTopbar } from "./MaintenanceClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
@@ -33,7 +33,7 @@ export default async function MaintenancePage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Maintenance" action={{ label: "New Work Order" }} />
+      <MaintenanceTopbar />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
         {/* KPIs */}

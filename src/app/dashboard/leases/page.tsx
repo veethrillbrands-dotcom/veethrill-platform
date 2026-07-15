@@ -1,4 +1,4 @@
-import { Topbar } from "@/components/layout/Topbar";
+import { LeasesTopbar } from "./LeasesClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
@@ -32,7 +32,7 @@ export default async function LeasesPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Leases" action={{ label: "New Lease" }} />
+      <LeasesTopbar />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
         {/* KPIs */}
