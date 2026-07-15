@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { MessageSquare, Bell, Mail, Phone, Send, Users, CheckCheck, Clock } from "lucide-react";
@@ -20,20 +20,26 @@ const ANNOUNCEMENTS = [
   { id: 3, title: "Welcome to Veethrill Platform", body: "Dear tenant, welcome to our new digital property management platform. You can now pay rent, raise maintenance requests, and more.", sent: "Jun 1, 2026", recipients: 5, opened: 4 },
 ];
 
-const NOTIFS = [
-  { icon: "💰", text: "Rent payment received — Chidi Okafor", time: "2m ago", color: "bg-emerald-50" },
-  { icon: "🔩", text: "New work order: AC failure Unit 7C", time: "2h ago", color: "bg-red-50" },
-  { icon: "📄", text: "Lease expiring in 16 days — Unit 7C", time: "Today", color: "bg-yellow-50" },
-  { icon: "👤", text: "New tenant application received", time: "Yesterday", color: "bg-blue-50" },
-  { icon: "🏠", text: "Shortlet check-out: Sarah Johnson", time: "Yesterday", color: "bg-purple-50" },
-];
+type Notif = { icon: string; text: string; time: string; color: string; severity: "critical" | "warning" | "info" };
 
 export default function CommunicationsPage() {
   const [selected, setSelected] = useState(MESSAGES[0]);
   const [reply, setReply] = useState("");
   const [tab, setTab] = useState<"inbox" | "announcements" | "notifications">("inbox");
+  const [notifs, setNotifs] = useState<Notif[]>([]);
+  const [notifsLoading, setNotifsLoading] = useState(false);
+
+  const loadNotifs = useCallback(async () => {
+    setNotifsLoading(true);
+    const res = await fetch("/api/notifications");
+    if (res.ok) setNotifs(await res.json());
+    setNotifsLoading(false);
+  }, []);
+
+  useEffect(() => { loadNotifs(); }, [loadNotifs]);
 
   const unread = MESSAGES.filter((m) => m.unread).length;
+  const criticalCount = notifs.filter((n) => n.severity === "critical").length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -48,7 +54,7 @@ export default function CommunicationsPage() {
               {([
                 { key: "inbox", label: "Inbox", count: unread },
                 { key: "announcements", label: "Blast", count: null },
-                { key: "notifications", label: "Alerts", count: 2 },
+                { key: "notifications", label: "Alerts", count: criticalCount || null },
               ] as const).map((t) => (
                 <button key={t.key} onClick={() => setTab(t.key)}
                   className={`flex-1 text-[11px] font-bold py-1.5 rounded-xl transition-colors flex items-center justify-center gap-1 ${tab === t.key ? "text-white" : "text-gray-500 hover:bg-gray-50"}`}
@@ -97,17 +103,26 @@ export default function CommunicationsPage() {
                 </div>
               ))}
 
-              {tab === "notifications" && NOTIFS.map((n, i) => (
-                <div key={i} className="px-4 py-3 border-b border-gray-50 hover:bg-gray-50">
-                  <div className="flex items-start gap-2.5">
-                    <div className={`w-8 h-8 rounded-xl ${n.color} flex items-center justify-center text-sm flex-shrink-0`}>{n.icon}</div>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-[12px] font-semibold text-gray-900">{n.text}</div>
-                      <div className="text-[10.5px] text-gray-400 mt-0.5">{n.time}</div>
+              {tab === "notifications" && (
+                notifsLoading ? (
+                  <div className="px-4 py-6 text-center text-[12px] text-gray-400">Loading alerts…</div>
+                ) : notifs.length === 0 ? (
+                  <div className="px-4 py-6 text-center text-[12px] text-gray-400">No active alerts — everything looks good!</div>
+                ) : notifs.map((n, i) => (
+                  <div key={i} className="px-4 py-3 border-b border-gray-50 hover:bg-gray-50">
+                    <div className="flex items-start gap-2.5">
+                      <div className={`w-8 h-8 rounded-xl ${n.color} flex items-center justify-center text-sm flex-shrink-0`}>{n.icon}</div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[12px] font-semibold text-gray-900">{n.text}</div>
+                        <div className="text-[10.5px] text-gray-400 mt-0.5 flex items-center gap-1">
+                          <Clock size={9} /> {n.time}
+                          {n.severity === "critical" && <span className="ml-2 text-[9px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">CRITICAL</span>}
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
 
               {tab === "announcements" && ANNOUNCEMENTS.map((a) => (
                 <div key={a.id} className="px-4 py-3 border-b border-gray-50 hover:bg-gray-50 cursor-pointer">
@@ -239,23 +254,41 @@ export default function CommunicationsPage() {
             )}
 
             {tab === "notifications" && (
-              <Card className="flex-1">
+              <Card className="flex-1 overflow-hidden flex flex-col">
                 <CardHeader>
-                  <CardTitle sub="System alerts and activity">Notification Centre</CardTitle>
-                  <button className="text-[11.5px] font-semibold text-gray-500 hover:text-gray-700">Mark all read</button>
-                </CardHeader>
-                <CardBody>
-                  <div className="space-y-2">
-                    {NOTIFS.map((n, i) => (
-                      <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${n.color}`}>
-                        <span className="text-xl">{n.icon}</span>
-                        <div className="flex-1">
-                          <div className="text-[13px] font-semibold text-gray-900">{n.text}</div>
-                          <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1"><Clock size={10} /> {n.time}</div>
-                        </div>
-                      </div>
-                    ))}
+                  <div>
+                    <CardTitle sub={`${notifs.length} active alerts from your portfolio`}>Notification Centre</CardTitle>
                   </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-[11px] text-gray-500">{criticalCount} critical · {notifs.filter((n) => n.severity === "warning").length} warnings</div>
+                    <button onClick={loadNotifs} className="text-[11.5px] font-semibold text-gray-500 hover:text-gray-700">Refresh</button>
+                  </div>
+                </CardHeader>
+                <CardBody className="overflow-y-auto flex-1">
+                  {notifsLoading ? (
+                    <div className="text-center text-gray-400 py-8 text-[13px]">Loading alerts…</div>
+                  ) : notifs.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-4xl mb-3">✅</div>
+                      <div className="text-[14px] font-bold text-gray-700">All clear!</div>
+                      <div className="text-[12px] text-gray-400 mt-1">No overdue payments, expiring leases, or urgent work orders.</div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {notifs.map((n, i) => (
+                        <div key={i} className={`flex items-start gap-3 p-3 rounded-xl ${n.color}`}>
+                          <span className="text-xl flex-shrink-0">{n.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-[13px] font-semibold text-gray-900">{n.text}</div>
+                            <div className="text-[11px] text-gray-500 mt-0.5 flex items-center gap-1.5">
+                              <Clock size={10} /> {n.time}
+                              {n.severity === "critical" && <span className="text-[9px] font-bold bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">CRITICAL</span>}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardBody>
               </Card>
             )}
