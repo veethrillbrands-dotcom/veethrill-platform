@@ -1,4 +1,4 @@
-import { PropertiesTopbar } from "./PropertiesClient";
+import { PropertiesTopbar, PropertyRowActions } from "./PropertiesClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
@@ -62,14 +62,14 @@ export default async function PropertiesPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {["Property", "Type", "Location", "Units", "Occupancy", "Monthly Revenue", "Health", "Status"].map((h) => (
+                    {["Property", "Type", "Location", "Units", "Occupancy", "Monthly Revenue", "Health", "Status", ""].map((h) => (
                       <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 first:pl-5">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {enriched.map((p) => (
-                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
                       <td className="px-4 py-3 pl-5">
                         <div className="flex items-center gap-2.5">
                           <span className="text-xl">{TYPE_EMOJI[p.type] ?? "🏢"}</span>
@@ -122,6 +122,11 @@ export default async function PropertiesPage() {
                         <Badge variant={p.status === "ACTIVE" ? "success" : "default"}>
                           {p.status}
                         </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <PropertyRowActions property={p} />
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -1,4 +1,4 @@
-import { TenantsTopbar } from "./TenantsClient";
+import { TenantsTopbar, TenantRowActions } from "./TenantsClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
@@ -64,18 +64,18 @@ export default async function TenantsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-gray-100">
-                    {["Tenant", "Contact", "Unit", "Property", "KYC", "Employer", "Lease Status"].map((h) => (
+                    {["Tenant", "Contact", "Unit", "Property", "KYC", "Employer", "Lease Status", ""].map((h) => (
                       <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 first:pl-5">{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {tenants.length === 0 ? (
-                    <tr><td colSpan={7} className="text-center text-gray-400 py-10 text-[13px]">No tenants yet.</td></tr>
+                    <tr><td colSpan={8} className="text-center text-gray-400 py-10 text-[13px]">No tenants yet.</td></tr>
                   ) : tenants.map((t) => {
                     const activeLease = t.leases[0];
                     return (
-                      <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
                         <td className="px-4 py-3 pl-5">
                           <div className="flex items-center gap-2.5">
                             <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[12px] flex-shrink-0"
@@ -107,6 +107,11 @@ export default async function TenantsPage() {
                           ) : (
                             <Badge variant="default">NO LEASE</Badge>
                           )}
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                            <TenantRowActions tenant={t} />
+                          </div>
                         </td>
                       </tr>
                     );
