@@ -1,4 +1,4 @@
-import { Topbar } from "@/components/layout/Topbar";
+import { DashboardTopbar } from "./DashboardTopbar";
 import { KPICard } from "@/components/ui/kpi-card";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge, statusToBadgeVariant } from "@/components/ui/badge";
@@ -89,7 +89,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Executive Dashboard" action={{ label: "Add Property" }} />
+      <DashboardTopbar />
 
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 

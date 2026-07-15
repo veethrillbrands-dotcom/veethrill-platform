@@ -74,6 +74,25 @@ enum PaymentType {
   SHORTLET
   PENALTY
   REFUND
+  LATE_FEE
+  OTHER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT
+  PAID
+  CANCELLED
+}
+
+enum InvoiceType {
+  RENT
+  SHORTLET
+  SERVICE
+  MAINTENANCE
+  OTHER
 }
 
 enum WorkOrderPriority {
@@ -338,8 +357,36 @@ model Inspection {
 
   property Property @relation(fields: [propertyId], references: [id])
   unit     Unit?    @relation(fields: [unitId], references: [id])
+  rating   Float?
 
   @@map("inspections")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  type          InvoiceType
+  status        InvoiceStatus @default(DRAFT)
+  tenantId      String?
+  bookingId     String?
+  recipientName String
+  recipientEmail String?
+  description   String
+  lineItems     Json          @default("[]")
+  subtotal      Float         @default(0)
+  taxRate       Float         @default(0)
+  total         Float         @default(0)
+  dueDate       DateTime
+  issuedAt      DateTime      @default(now())
+  approvedAt    DateTime?
+  approvedBy    String?
+  sentAt        DateTime?
+  paidAt        DateTime?
+  notes         String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@map("invoices")
 }
 
 model ShortletBooking {
