@@ -1,0 +1,414 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  SUPER_ADMIN
+  COMPANY_ADMIN
+  PROPERTY_MANAGER
+  OWNER
+  TENANT
+  GUEST
+  VENDOR
+  MAINTENANCE_STAFF
+}
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  MIXED_USE
+  SHORTLET
+  LUXURY_RESIDENTIAL
+}
+
+enum PropertyStatus {
+  ACTIVE
+  INACTIVE
+  UNDER_RENOVATION
+  SOLD
+}
+
+enum UnitStatus {
+  OCCUPIED
+  VACANT
+  RESERVED
+  MAINTENANCE
+  SHORTLET
+}
+
+enum LeaseStatus {
+  ACTIVE
+  EXPIRED
+  PENDING
+  TERMINATED
+  RENEWED
+}
+
+enum PaymentStatus {
+  PAID
+  PENDING
+  OVERDUE
+  PARTIAL
+  REFUNDED
+}
+
+enum PaymentMethod {
+  PAYSTACK
+  FLUTTERWAVE
+  STRIPE
+  BANK_TRANSFER
+  CASH
+}
+
+enum PaymentType {
+  RENT
+  DEPOSIT
+  MAINTENANCE
+  SHORTLET
+  PENALTY
+  REFUND
+}
+
+enum WorkOrderPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+  ROUTINE
+}
+
+enum WorkOrderStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum KYCStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CHECKED_IN
+  CHECKED_OUT
+  CANCELLED
+  NO_SHOW
+}
+
+enum BookingSource {
+  DIRECT
+  AIRBNB
+  BOOKING_COM
+  EXPEDIA
+  OTHER
+}
+
+// ─── MODELS ──────────────────────────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String   @unique
+  firstName String
+  lastName  String
+  phone     String?
+  avatar    String?
+  role      UserRole @default(TENANT)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant        Tenant?
+  owner         Owner?
+  vendor        Vendor?
+  messages      Message[]      @relation("SentMessages")
+  notifications Notification[]
+
+  @@map("users")
+}
+
+model Property {
+  id          String         @id @default(cuid())
+  name        String
+  type        PropertyType
+  address     String
+  city        String
+  state       String
+  country     String         @default("Nigeria")
+  description String?
+  totalUnits  Int            @default(0)
+  images      String[]
+  documents   String[]
+  gpsLat      Float?
+  gpsLng      Float?
+  status      PropertyStatus @default(ACTIVE)
+  healthScore Int            @default(100)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  units       Unit[]
+  workOrders  WorkOrder[]
+  inspections Inspection[]
+
+  @@map("properties")
+}
+
+model Unit {
+  id            String     @id @default(cuid())
+  propertyId    String
+  unitNumber    String
+  floor         Int        @default(1)
+  bedrooms      Int        @default(1)
+  bathrooms     Int        @default(1)
+  sqMeters      Float?
+  monthlyRent   Float
+  nightlyRate   Float?
+  depositAmount Float
+  status        UnitStatus @default(VACANT)
+  amenities     String[]
+  photos        String[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  property    Property          @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  leases      Lease[]
+  workOrders  WorkOrder[]
+  inspections Inspection[]
+  bookings    ShortletBooking[]
+
+  @@unique([propertyId, unitNumber])
+  @@map("units")
+}
+
+model Tenant {
+  id               String    @id @default(cuid())
+  userId           String    @unique
+  kycStatus        KYCStatus @default(PENDING)
+  kycDocuments     String[]
+  employerName     String?
+  emergencyContact String?
+  emergencyPhone   String?
+  notes            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leases   Lease[]
+  payments Payment[]
+
+  @@map("tenants")
+}
+
+model Owner {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  bankName          String?
+  bankAccountNumber String?
+  bankAccountName   String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("owners")
+}
+
+model Vendor {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  companyName    String
+  specialization String[]
+  rating         Float    @default(0)
+  isVerified     Boolean  @default(false)
+  bankName       String?
+  bankAccount    String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workOrders WorkOrder[]
+
+  @@map("vendors")
+}
+
+model Lease {
+  id             String      @id @default(cuid())
+  unitId         String
+  tenantId       String
+  startDate      DateTime
+  endDate        DateTime
+  rentAmount     Float
+  depositAmount  Float
+  depositPaid    Boolean     @default(false)
+  status         LeaseStatus @default(PENDING)
+  autoRenew      Boolean     @default(false)
+  escalationRate Float?
+  documentUrl    String?
+  signedAt       DateTime?
+  notes          String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  unit     Unit      @relation(fields: [unitId], references: [id])
+  tenant   Tenant    @relation(fields: [tenantId], references: [id])
+  payments Payment[]
+
+  @@map("leases")
+}
+
+model Payment {
+  id         String        @id @default(cuid())
+  tenantId   String
+  leaseId    String?
+  bookingId  String?
+  amount     Float
+  type       PaymentType
+  method     PaymentMethod
+  status     PaymentStatus @default(PENDING)
+  reference  String        @unique
+  gateway    String?
+  receiptUrl String?
+  dueDate    DateTime
+  paidAt     DateTime?
+  notes      String?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id])
+  lease   Lease?           @relation(fields: [leaseId], references: [id])
+  booking ShortletBooking? @relation(fields: [bookingId], references: [id])
+
+  @@map("payments")
+}
+
+model WorkOrder {
+  id              String            @id @default(cuid())
+  propertyId      String
+  unitId          String?
+  vendorId        String?
+  title           String
+  description     String
+  category        String
+  priority        WorkOrderPriority @default(MEDIUM)
+  status          WorkOrderStatus   @default(OPEN)
+  estimatedCost   Float?
+  actualCost      Float?
+  slaHours        Int               @default(24)
+  photos          String[]
+  completionNotes String?
+  raisedAt        DateTime          @default(now())
+  assignedAt      DateTime?
+  completedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  unit     Unit?    @relation(fields: [unitId], references: [id])
+  vendor   Vendor?  @relation(fields: [vendorId], references: [id])
+
+  @@map("work_orders")
+}
+
+model Inspection {
+  id           String    @id @default(cuid())
+  propertyId   String
+  unitId       String?
+  type         String
+  scheduledAt  DateTime
+  completedAt  DateTime?
+  inspectorId  String?
+  photos       String[]
+  videos       String[]
+  findings     String?
+  damageReport String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  property Property @relation(fields: [propertyId], references: [id])
+  unit     Unit?    @relation(fields: [unitId], references: [id])
+
+  @@map("inspections")
+}
+
+model ShortletBooking {
+  id              String        @id @default(cuid())
+  unitId          String
+  guestName       String
+  guestEmail      String
+  guestPhone      String
+  checkIn         DateTime
+  checkOut        DateTime
+  nights          Int
+  nightlyRate     Float
+  totalAmount     Float
+  source          BookingSource @default(DIRECT)
+  status          BookingStatus @default(PENDING)
+  guestCount      Int           @default(1)
+  specialRequests String?
+  checkInCode     String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  unit     Unit      @relation(fields: [unitId], references: [id])
+  payments Payment[]
+
+  @@map("shortlet_bookings")
+}
+
+model Message {
+  id        String    @id @default(cuid())
+  senderId  String
+  threadId  String?
+  subject   String?
+  body      String
+  type      String    @default("DIRECT")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  sender User @relation("SentMessages", fields: [senderId], references: [id])
+
+  @@map("messages")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  type      String
+  channel   String    @default("IN_APP")
+  data      Json?
+  readAt    DateTime?
+  sentAt    DateTime  @default(now())
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Document {
+  id         String   @id @default(cuid())
+  name       String
+  url        String
+  type       String
+  size       Int?
+  entityType String
+  entityId   String
+  uploadedBy String
+  createdAt  DateTime @default(now())
+
+  @@map("documents")
+}
