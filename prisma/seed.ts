@@ -97,9 +97,9 @@ async function main() {
     data: [
       {
         propertyId: "prop-001",
-        unitNumber: "4B",
+        unitId: unit7C.id,
         title: "AC unit complete failure",
-        description: "Air conditioning unit in Unit 4B has stopped working completely.",
+        description: "Air conditioning unit in Unit 7C has stopped working completely.",
         category: "HVAC",
         priority: "URGENT",
         status: "IN_PROGRESS",
@@ -115,7 +115,7 @@ async function main() {
         slaHours: 336,
         estimatedCost: 65000,
       },
-    ] as any,
+    ],
   });
 
   // Create a shortlet booking

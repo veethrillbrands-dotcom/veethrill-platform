@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, BarChart2, Building2, Home, Users, UserCheck,
@@ -60,15 +61,14 @@ export function Sidebar() {
   return (
     <aside className="w-[220px] min-w-[220px] flex flex-col overflow-y-auto" style={{ background: "var(--navy)" }}>
       {/* Brand */}
-      <div className="px-4 py-5 border-b border-white/10">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center font-black text-base flex-shrink-0"
-            style={{ background: "linear-gradient(135deg, var(--gold) 0%, #b8960a 100%)", color: "var(--navy)" }}>
-            V
+      <div className="px-4 py-4 border-b border-white/10">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-20 h-20 rounded-xl bg-white flex items-center justify-center p-1.5 flex-shrink-0">
+            <Image src="/logo.png" alt="Veethrill" width={72} height={72} className="object-contain" />
           </div>
-          <div className="min-w-0">
-            <div className="text-white font-bold text-[11.5px] leading-tight">Veethrill Realty</div>
-            <div className="text-white/40 text-[10px] mt-0.5">Property Platform</div>
+          <div className="text-center">
+            <div className="text-white font-bold text-[11px] leading-tight">Veethrill Realty</div>
+            <div className="text-white/40 text-[9.5px] mt-0.5">Property Platform</div>
           </div>
         </div>
       </div>
