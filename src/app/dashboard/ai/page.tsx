@@ -45,8 +45,10 @@ function getAIResponse(input: string): string {
   return "I've analysed your portfolio data. Could you be more specific? You can ask about vacancies, overdue rent, maintenance priorities, revenue forecasts, lease renewals, or expense breakdowns.";
 }
 
+type Message = { role: "ai" | "user"; text: string };
+
 export default function AIPage() {
-  const [messages, setMessages] = useState(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
 

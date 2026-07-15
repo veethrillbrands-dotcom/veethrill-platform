@@ -112,7 +112,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                 <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
                 <YAxis tickFormatter={fmt} tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={52} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid #E5E7EB" }} />
+                <Tooltip formatter={(v) => formatCurrency(v as number)} contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid #E5E7EB" }} />
                 <Area type="monotone" dataKey="revenue" stroke="#D4AF37" strokeWidth={2} fill="url(#revGrad)" name="Revenue" />
                 <Area type="monotone" dataKey="noi" stroke="#1E8E5A" strokeWidth={2} fill="url(#noiGrad)" name="NOI" />
                 <Line type="monotone" dataKey="expenses" stroke="#EF4444" strokeWidth={1.5} dot={false} name="Expenses" />
@@ -134,7 +134,7 @@ export default function AnalyticsPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
                     <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
                     <YAxis domain={[60, 100]} tickFormatter={(v) => `${v}%`} tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={36} />
-                    <Tooltip formatter={(v: number) => `${v}%`} contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid #E5E7EB" }} />
+                    <Tooltip formatter={(v) => `${v as number}%`} contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid #E5E7EB" }} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Line type="monotone" dataKey="residential" stroke="#0B1F3A" strokeWidth={2} dot={false} name="Residential" />
                     <Line type="monotone" dataKey="commercial" stroke="#D4AF37" strokeWidth={2} dot={false} name="Commercial" />
@@ -155,7 +155,7 @@ export default function AnalyticsPage() {
                   <Pie data={expenseBreakdown} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={3}>
                     {expenseBreakdown.map((e) => <Cell key={e.name} fill={e.color} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number) => `${v}%`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+                  <Tooltip formatter={(v) => `${v as number}%`} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-1.5 mt-2">
@@ -230,7 +230,7 @@ export default function AnalyticsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
                 <XAxis dataKey="name" tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} interval={0} />
                 <YAxis tickFormatter={fmt} tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={48} />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid #E5E7EB" }} />
+                <Tooltip formatter={(v) => formatCurrency(v as number)} contentStyle={{ fontSize: 12, borderRadius: 12, border: "1px solid #E5E7EB" }} />
                 <Bar dataKey="revenue" name="Revenue" radius={[6, 6, 0, 0]} fill="#D4AF37" />
               </BarChart>
             </ResponsiveContainer>
