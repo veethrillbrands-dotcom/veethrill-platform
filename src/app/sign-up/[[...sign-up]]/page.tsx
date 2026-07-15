@@ -1,4 +1,5 @@
 import { SignUp } from "@clerk/nextjs";
+import Image from "next/image";
 
 export default function SignUpPage() {
   return (
@@ -10,9 +11,8 @@ export default function SignUpPage() {
 
       <div className="relative z-10 flex flex-col items-center gap-8">
         <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl mx-auto mb-4"
-            style={{ background: "linear-gradient(135deg, var(--gold), #b8960a)", color: "var(--navy)" }}>
-            V
+          <div className="w-20 h-20 rounded-2xl bg-white flex items-center justify-center mx-auto mb-4 p-2 shadow-lg">
+            <Image src="/logo.png" alt="Veethrill" width={72} height={72} className="object-contain" />
           </div>
           <h1 className="text-white text-2xl font-black">Veethrill Realty</h1>
           <p className="text-white/50 text-sm mt-1">Create your account</p>

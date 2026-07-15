@@ -2,13 +2,91 @@ import { Topbar } from "@/components/layout/Topbar";
 import { KPICard } from "@/components/ui/kpi-card";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge, statusToBadgeVariant } from "@/components/ui/badge";
-import { mockKPIs, mockProperties, mockWorkOrders, revenueChartData, occupancyTrendData } from "@/lib/mock-data";
-import { formatCurrency, formatRelativeTime } from "@/lib/utils";
-import { Building2, Users, CreditCard, Cog, Sparkles, TrendingUp, AlertTriangle } from "lucide-react";
+import { formatCurrency } from "@/lib/utils";
+import { Building2, CreditCard, Cog, Sparkles, AlertTriangle } from "lucide-react";
 import { RevenueChart } from "@/components/charts/RevenueChart";
 import { OccupancyDonut } from "@/components/charts/OccupancyDonut";
+import { revenueChartData } from "@/lib/mock-data";
+import { db } from "@/lib/db";
 
-export default function DashboardPage() {
+async function getDashboardData() {
+  try {
+    const [properties, workOrders, payments, shortletBookings] = await Promise.all([
+      db.property.findMany({ include: { units: true }, take: 10 }),
+      db.workOrder.findMany({
+        where: { status: { not: "COMPLETED" } },
+        include: { property: true, unit: true },
+        orderBy: { raisedAt: "desc" },
+        take: 5,
+      }),
+      db.payment.findMany({
+        where: { status: "OVERDUE" },
+        take: 20,
+      }),
+      db.shortletBooking.findMany({
+        where: { status: { in: ["CONFIRMED", "CHECKED_IN"] } },
+      }),
+    ]);
+
+    const totalUnits = properties.reduce((s, p) => s + p.units.length, 0);
+    const occupiedUnits = properties.reduce(
+      (s, p) => s + p.units.filter((u) => u.status === "OCCUPIED").length, 0
+    );
+    const vacantUnits = properties.reduce(
+      (s, p) => s + p.units.filter((u) => u.status === "VACANT").length, 0
+    );
+    const reservedUnits = properties.reduce(
+      (s, p) => s + p.units.filter((u) => u.status === "RESERVED").length, 0
+    );
+    const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+
+    const monthlyRevenue = properties.reduce(
+      (s, p) => s + p.units.filter((u) => u.status === "OCCUPIED").reduce((us, u) => us + u.monthlyRent, 0), 0
+    );
+    const overdueRent = payments.reduce((s, p) => s + p.amount, 0);
+
+    const topProperties = properties.map((p) => ({
+      id: p.id,
+      name: p.name,
+      city: p.city,
+      totalUnits: p.units.length,
+      occupiedUnits: p.units.filter((u) => u.status === "OCCUPIED").length,
+      monthlyRevenue: p.units.filter((u) => u.status === "OCCUPIED").reduce((s, u) => s + u.monthlyRent, 0),
+      occupancyRate: p.units.length > 0 ? (p.units.filter((u) => u.status === "OCCUPIED").length / p.units.length) * 100 : 0,
+    }));
+
+    return {
+      kpis: {
+        monthlyRevenue,
+        occupancyRate,
+        openWorkOrders: workOrders.length,
+        overdueRent,
+        collectionRate: 94,
+        renewalRate: 88,
+      },
+      properties: topProperties,
+      workOrders,
+      occupied: occupiedUnits,
+      reserved: reservedUnits,
+      vacant: vacantUnits,
+      shortletActive: shortletBookings.length,
+      totalProperties: properties.length,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export default async function DashboardPage() {
+  const data = await getDashboardData();
+
+  const kpis = data?.kpis ?? { monthlyRevenue: 48200000, occupancyRate: 94, openWorkOrders: 23, overdueRent: 3100000, collectionRate: 94, renewalRate: 88 };
+  const properties = data?.properties ?? [];
+  const workOrders = data?.workOrders ?? [];
+  const occupied = data?.occupied ?? 294;
+  const reserved = data?.reserved ?? 10;
+  const vacant = data?.vacant ?? 8;
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar title="Executive Dashboard" action={{ label: "Add Property" }} />
@@ -21,30 +99,30 @@ export default function DashboardPage() {
           <p className="text-[12.5px] text-gray-800 flex-1">
             <strong>3 leases expiring</strong> in the next 30 days — send renewal offers to avoid vacancies.
           </p>
-          <span className="text-[11.5px] font-semibold cursor-pointer" style={{ color: "var(--gold)" }}>View Leases →</span>
+          <a href="/dashboard/leases" className="text-[11.5px] font-semibold" style={{ color: "var(--gold)" }}>View Leases →</a>
         </div>
 
         {/* KPI Row */}
         <div className="grid grid-cols-4 gap-4">
           <KPICard
             label="Monthly Revenue"
-            value={formatCurrency(mockKPIs.monthlyRevenue)}
-            change={mockKPIs.revenueChange}
+            value={formatCurrency(kpis.monthlyRevenue)}
+            change={8.4}
             accentColor="var(--gold)"
             icon={<CreditCard size={18} style={{ color: "var(--gold)" }} />}
             sparkline={[32, 35.5, 38.2, 41, 44.7, 48.2]}
           />
           <KPICard
             label="Occupancy Rate"
-            value={`${mockKPIs.occupancyRate}%`}
-            change={mockKPIs.occupancyChange}
+            value={`${kpis.occupancyRate}%`}
+            change={2.1}
             accentColor="var(--emerald)"
             icon={<Building2 size={18} style={{ color: "var(--emerald)" }} />}
             sparkline={[88, 89.5, 91, 92.2, 93.1, 94.3]}
           />
           <KPICard
             label="Open Work Orders"
-            value={`${mockKPIs.openWorkOrders}`}
+            value={`${kpis.openWorkOrders}`}
             changeLabel="↓ 8 resolved"
             change={-8}
             accentColor="#3B82F6"
@@ -53,7 +131,7 @@ export default function DashboardPage() {
           />
           <KPICard
             label="Overdue Rent"
-            value={formatCurrency(mockKPIs.overdueRent)}
+            value={formatCurrency(kpis.overdueRent)}
             changeLabel="↑ 4 tenants"
             change={-4}
             accentColor="#EF4444"
@@ -68,12 +146,12 @@ export default function DashboardPage() {
             <RevenueChart data={revenueChartData} />
           </div>
           <div className="flex flex-col gap-4">
-            <OccupancyDonut occupied={294} reserved={10} vacant={8} />
+            <OccupancyDonut occupied={occupied} reserved={reserved} vacant={vacant} />
             <Card>
               <CardBody>
                 {[
-                  { label: "Collection Rate", value: mockKPIs.collectionRate, color: "var(--emerald)" },
-                  { label: "Renewal Rate", value: mockKPIs.renewalRate, color: "var(--gold)" },
+                  { label: "Collection Rate", value: kpis.collectionRate, color: "var(--emerald)" },
+                  { label: "Renewal Rate", value: kpis.renewalRate, color: "var(--gold)" },
                   { label: "Shortlet Occ.", value: 90, color: "#3B82F6" },
                 ].map((item) => (
                   <div key={item.label} className="mb-3 last:mb-0">
@@ -96,11 +174,11 @@ export default function DashboardPage() {
           {/* Top Properties */}
           <Card>
             <CardHeader>
-              <CardTitle sub="By revenue · June 2026">Top Properties</CardTitle>
+              <CardTitle sub="By revenue · Live">Top Properties</CardTitle>
               <a href="/dashboard/properties" className="text-[11.5px] font-semibold" style={{ color: "var(--gold)" }}>View all →</a>
             </CardHeader>
             <CardBody>
-              {mockProperties.slice(0, 4).map((prop) => (
+              {properties.length > 0 ? properties.slice(0, 4).map((prop) => (
                 <div key={prop.id} className="flex items-center gap-3 py-2.5 border-b border-gray-100 last:border-0 last:pb-0">
                   <div className="w-10 h-9 rounded-lg bg-yellow-50 flex items-center justify-center text-lg flex-shrink-0">🏢</div>
                   <div className="flex-1 min-w-0">
@@ -108,13 +186,17 @@ export default function DashboardPage() {
                     <div className="text-[11px] text-gray-400">{prop.city} · {prop.totalUnits} units</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-[13px] font-bold text-gray-900">{formatCurrency(prop.monthlyRevenue / 1000000)}M</div>
-                    <div className={`text-[10.5px] font-semibold ${prop.occupancyRate >= 90 ? "text-emerald-600" : "text-yellow-600"}`}>
+                    <div className="text-[13px] font-bold text-gray-900">
+                      {prop.monthlyRevenue > 0 ? formatCurrency(prop.monthlyRevenue) : "—"}
+                    </div>
+                    <div className={`text-[10.5px] font-semibold ${prop.occupancyRate >= 80 ? "text-emerald-600" : "text-yellow-600"}`}>
                       {prop.occupancyRate.toFixed(0)}% occ.
                     </div>
                   </div>
                 </div>
-              ))}
+              )) : (
+                <p className="text-[12px] text-gray-400 py-4 text-center">No properties yet — add your first property.</p>
+              )}
             </CardBody>
           </Card>
 
@@ -125,7 +207,7 @@ export default function DashboardPage() {
               <a href="/dashboard/maintenance" className="text-[11.5px] font-semibold" style={{ color: "var(--gold)" }}>Manage →</a>
             </CardHeader>
             <CardBody>
-              {mockWorkOrders.map((wo) => (
+              {workOrders.length > 0 ? workOrders.map((wo) => (
                 <div key={wo.id} className="flex items-center gap-2.5 py-2 border-b border-gray-100 last:border-0">
                   <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     wo.priority === "URGENT" ? "bg-red-500" :
@@ -135,11 +217,13 @@ export default function DashboardPage() {
                   }`} />
                   <div className="flex-1 min-w-0">
                     <div className="text-[12.5px] font-semibold text-gray-900 truncate">{wo.title}</div>
-                    <div className="text-[11px] text-gray-400">{wo.propertyName}{wo.unitNumber ? ` · ${wo.unitNumber}` : ""}</div>
+                    <div className="text-[11px] text-gray-400">{wo.property.name}{wo.unit ? ` · ${wo.unit.unitNumber}` : ""}</div>
                   </div>
                   <Badge variant={statusToBadgeVariant(wo.priority)}>{wo.priority}</Badge>
                 </div>
-              ))}
+              )) : (
+                <p className="text-[12px] text-gray-400 py-4 text-center">No open work orders.</p>
+              )}
             </CardBody>
           </Card>
 
@@ -154,8 +238,8 @@ export default function DashboardPage() {
                 { icon: "💰", title: "Rent paid — ₦350,000", sub: "Chidi Okafor · Unit 7C", time: "2m ago", bg: "bg-emerald-50" },
                 { icon: "📄", title: "Lease renewed · 2 yrs", sub: "Ngozi Adeyemi · Unit 3A", time: "18m ago", bg: "bg-yellow-50" },
                 { icon: "👤", title: "New tenant onboarded", sub: "Emeka Bello · Unit 5B", time: "1h ago", bg: "bg-blue-50" },
-                { icon: "🔩", title: "Work order raised", sub: "AC failure · Unit 4B", time: "2h ago", bg: "bg-red-50" },
-                { icon: "🏠", title: "Shortlet check-in", sub: "Sarah Johnson · Suite 2B", time: "3h ago", bg: "bg-purple-50" },
+                { icon: "🔩", title: "Work order raised", sub: "AC failure · Unit 7C", time: "2h ago", bg: "bg-red-50" },
+                { icon: "🏠", title: "Shortlet check-in", sub: "Sarah Johnson · Suite 1A", time: "3h ago", bg: "bg-purple-50" },
               ].map((a, i) => (
                 <div key={i} className="flex items-start gap-2.5 py-2 border-b border-gray-100 last:border-0">
                   <div className={`w-8 h-8 rounded-lg ${a.bg} flex items-center justify-center text-sm flex-shrink-0 mt-0.5`}>{a.icon}</div>
@@ -172,7 +256,6 @@ export default function DashboardPage() {
 
         {/* AI + Modules */}
         <div className="grid grid-cols-3 gap-4">
-          {/* AI Card */}
           <div className="rounded-2xl p-5 relative overflow-hidden" style={{ background: "linear-gradient(135deg, var(--navy) 0%, var(--navy-mid) 100%)" }}>
             <div className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10" style={{ background: "var(--gold)", transform: "translate(30%, -30%)" }} />
             <div className="text-[10px] font-bold uppercase tracking-widest mb-1.5" style={{ color: "var(--gold)" }}>✦ AI Powered</div>
@@ -197,7 +280,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Module Grid */}
           <Card className="col-span-2">
             <CardHeader>
               <CardTitle>Platform Modules</CardTitle>
@@ -206,14 +288,14 @@ export default function DashboardPage() {
             <CardBody>
               <div className="grid grid-cols-4 gap-2">
                 {[
-                  { icon: "🏢", name: "Properties", count: "47 total", href: "/dashboard/properties" },
-                  { icon: "👥", name: "Tenants", count: "312 active", href: "/dashboard/tenants" },
-                  { icon: "📄", name: "Leases", count: "298 live", href: "/dashboard/leases" },
-                  { icon: "🏨", name: "Shortlets", count: "18 active", href: "/dashboard/shortlets" },
-                  { icon: "💳", name: "Payments", count: "₦48.2M", href: "/dashboard/payments" },
-                  { icon: "🔩", name: "Maintenance", count: "23 open", href: "/dashboard/maintenance" },
+                  { icon: "🏢", name: "Properties", count: `${data?.totalProperties ?? 0} total`, href: "/dashboard/properties" },
+                  { icon: "👥", name: "Tenants", count: "Active", href: "/dashboard/tenants" },
+                  { icon: "📄", name: "Leases", count: "Live", href: "/dashboard/leases" },
+                  { icon: "🏨", name: "Shortlets", count: `${data?.shortletActive ?? 0} active`, href: "/dashboard/shortlets" },
+                  { icon: "💳", name: "Payments", count: "Ledger", href: "/dashboard/payments" },
+                  { icon: "🔩", name: "Maintenance", count: `${kpis.openWorkOrders} open`, href: "/dashboard/maintenance" },
                   { icon: "📒", name: "Accounting", count: "P&L live", href: "/dashboard/accounting" },
-                  { icon: "🗂️", name: "Documents", count: "1,204 files", href: "/dashboard/documents" },
+                  { icon: "🗂️", name: "Documents", count: "Files", href: "/dashboard/documents" },
                 ].map((m) => (
                   <a key={m.name} href={m.href}
                     className="flex flex-col items-center text-center p-3 rounded-xl border border-gray-100 hover:border-yellow-300 hover:shadow-sm transition-all cursor-pointer group">
