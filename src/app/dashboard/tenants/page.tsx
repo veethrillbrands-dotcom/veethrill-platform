@@ -1,4 +1,4 @@
-import { Topbar } from "@/components/layout/Topbar";
+import { TenantsTopbar } from "./TenantsClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
@@ -28,7 +28,7 @@ export default async function TenantsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Tenants" action={{ label: "Add Tenant" }} />
+      <TenantsTopbar />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
         {/* KPIs */}

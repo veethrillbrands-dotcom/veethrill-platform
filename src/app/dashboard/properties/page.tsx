@@ -1,4 +1,4 @@
-import { Topbar } from "@/components/layout/Topbar";
+import { PropertiesTopbar } from "./PropertiesClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
@@ -34,7 +34,7 @@ export default async function PropertiesPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Properties" action={{ label: "Add Property" }} />
+      <PropertiesTopbar />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
         {/* Summary KPIs */}
