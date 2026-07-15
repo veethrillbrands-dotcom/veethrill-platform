@@ -6,7 +6,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { RecordPaymentModal } from "@/components/modals/RecordPaymentModal";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { CheckCircle, Trash2 } from "lucide-react";
+import { CheckCircle, Trash2, CheckSquare } from "lucide-react";
 
 type Payment = {
   id: string; reference: string; amount: number; type: string; method: string;
@@ -35,6 +35,7 @@ export function PaymentsTopbar() {
 export function PaymentsTable({ payments }: { payments: Payment[] }) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   async function markPaid(id: string) {
     setLoading(id);
@@ -55,22 +56,63 @@ export function PaymentsTable({ payments }: { payments: Payment[] }) {
     router.refresh();
   }
 
+  async function bulkDelete() {
+    if (!confirm(`Delete ${selected.size} payment records?`)) return;
+    await Promise.all([...selected].map((id) => fetch(`/api/payments/${id}`, { method: "DELETE" })));
+    setSelected(new Set());
+    router.refresh();
+  }
+
+  async function bulkMarkPaid() {
+    const pending = payments.filter((p) => selected.has(p.id) && (p.status === "PENDING" || p.status === "OVERDUE"));
+    if (!pending.length) return;
+    await Promise.all(pending.map((p) => fetch(`/api/payments/${p.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ status: "PAID" }) })));
+    setSelected(new Set());
+    router.refresh();
+  }
+
+  function toggleSelect(id: string) { setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
+  function toggleAll() { setSelected(payments.length > 0 && payments.every((p) => selected.has(p.id)) ? new Set() : new Set(payments.map((p) => p.id))); }
+  const allChecked = payments.length > 0 && payments.every((p) => selected.has(p.id));
+
   return (
+    <div>
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4 mx-1">
+          <CheckSquare size={14} className="text-red-600" />
+          <span className="text-[13px] font-semibold text-red-700">{selected.size} selected</span>
+          <button onClick={bulkMarkPaid}
+            className="flex items-center gap-1.5 text-[12px] font-bold text-white bg-emerald-500 hover:bg-emerald-600 px-3 py-1.5 rounded-lg transition-colors">
+            <CheckCircle size={12} />Mark Paid
+          </button>
+          <button onClick={bulkDelete}
+            className="flex items-center gap-1.5 text-[12px] font-bold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors">
+            <Trash2 size={12} />Delete
+          </button>
+          <button onClick={() => setSelected(new Set())} className="text-[12px] text-red-500 hover:text-red-700">Clear</button>
+        </div>
+      )}
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-100">
+            <th className="pl-5 pr-2 py-3 w-8">
+              <input type="checkbox" checked={allChecked} onChange={toggleAll} className="w-3.5 h-3.5 rounded accent-yellow-500" />
+            </th>
             {["Reference", "Tenant", "Unit · Property", "Type", "Method", "Amount", "Due Date", "Status", ""].map((h) => (
-              <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 first:pl-5">{h}</th>
+              <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {payments.length === 0 ? (
-            <tr><td colSpan={9} className="text-center text-gray-400 py-10 text-[13px]">No payments recorded yet.</td></tr>
+            <tr><td colSpan={10} className="text-center text-gray-400 py-10 text-[13px]">No payments recorded yet.</td></tr>
           ) : payments.map((p) => (
-            <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-              <td className="px-4 py-3 pl-5">
+            <tr key={p.id} className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors group ${selected.has(p.id) ? "bg-blue-50/40" : ""}`}>
+              <td className="pl-5 pr-2 py-3">
+                <input type="checkbox" checked={selected.has(p.id)} onChange={() => toggleSelect(p.id)} className="w-3.5 h-3.5 rounded accent-yellow-500" />
+              </td>
+              <td className="px-4 py-3">
                 <span className="text-[11.5px] font-mono text-gray-600">{p.reference}</span>
               </td>
               <td className="px-4 py-3">
@@ -118,6 +160,7 @@ export function PaymentsTable({ payments }: { payments: Payment[] }) {
           ))}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }

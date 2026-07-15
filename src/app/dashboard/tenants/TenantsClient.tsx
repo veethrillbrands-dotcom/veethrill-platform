@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
 import { AddTenantModal } from "@/components/modals/AddTenantModal";
-import { Pencil, Trash2, X, CheckCircle } from "lucide-react";
+import { Pencil, Trash2, X, CheckCircle, CheckSquare } from "lucide-react";
 
 type Tenant = {
   id: string; employerName: string | null; emergencyContact: string | null; emergencyPhone: string | null;
@@ -94,6 +94,124 @@ function EditTenantModal({ tenant, onClose }: { tenant: Tenant; onClose: () => v
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+type TenantRow = {
+  id: string; kycStatus: string; employerName: string | null;
+  user: { firstName: string; lastName: string; email: string; phone: string | null };
+  activeUnit: string | null; activeProperty: string | null;
+};
+
+export function TenantsTable({ tenants }: { tenants: TenantRow[] }) {
+  const router = useRouter();
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  function toggleSelect(id: string) { setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
+  function toggleAll() { setSelected(tenants.length > 0 && tenants.every((t) => selected.has(t.id)) ? new Set() : new Set(tenants.map((t) => t.id))); }
+  const allChecked = tenants.length > 0 && tenants.every((t) => selected.has(t.id));
+
+  async function bulkDelete() {
+    if (!confirm(`Delete ${selected.size} tenants? This cannot be undone.`)) return;
+    await Promise.all([...selected].map((id) => fetch(`/api/tenants/${id}`, { method: "DELETE" })));
+    setSelected(new Set());
+    router.refresh();
+  }
+
+  async function deleteTenant(id: string, name: string) {
+    if (!confirm(`Delete tenant "${name}"? This cannot be undone.`)) return;
+    await fetch(`/api/tenants/${id}`, { method: "DELETE" });
+    router.refresh();
+  }
+
+  const KYC_COLORS: Record<string, string> = {
+    VERIFIED: "bg-emerald-100 text-emerald-700", PENDING: "bg-yellow-100 text-yellow-700", REJECTED: "bg-red-100 text-red-700",
+  };
+
+  function getInitials(name: string) {
+    return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
+  }
+
+  return (
+    <div>
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4">
+          <CheckSquare size={14} className="text-red-600" />
+          <span className="text-[13px] font-semibold text-red-700">{selected.size} selected</span>
+          <button onClick={bulkDelete} className="flex items-center gap-1.5 text-[12px] font-bold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors">
+            <Trash2 size={12} />Delete Selected
+          </button>
+          <button onClick={() => setSelected(new Set())} className="text-[12px] text-red-500 hover:text-red-700">Clear</button>
+        </div>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-gray-100">
+              <th className="pl-5 pr-2 py-3 w-8">
+                <input type="checkbox" checked={allChecked} onChange={toggleAll} className="w-3.5 h-3.5 rounded accent-yellow-500" />
+              </th>
+              {["Tenant", "Contact", "Unit", "Property", "KYC", "Employer", "Lease Status", ""].map((h) => (
+                <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {tenants.length === 0 ? (
+              <tr><td colSpan={9} className="text-center text-gray-400 py-10 text-[13px]">No tenants yet.</td></tr>
+            ) : tenants.map((t) => (
+              <tr key={t.id} className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors group ${selected.has(t.id) ? "bg-blue-50/40" : ""}`}>
+                <td className="pl-5 pr-2 py-3">
+                  <input type="checkbox" checked={selected.has(t.id)} onChange={() => toggleSelect(t.id)} className="w-3.5 h-3.5 rounded accent-yellow-500" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[12px] flex-shrink-0"
+                      style={{ background: "linear-gradient(135deg, var(--gold), #b8960a)", color: "var(--navy)" }}>
+                      {getInitials(`${t.user.firstName} ${t.user.lastName}`)}
+                    </div>
+                    <div>
+                      <div className="text-[13px] font-semibold text-gray-900">{t.user.firstName} {t.user.lastName}</div>
+                      <div className="text-[11px] text-gray-400">{t.user.email}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{t.user.phone ?? "—"}</td>
+                <td className="px-4 py-3 text-[12px] font-semibold text-gray-900">{t.activeUnit ? `Unit ${t.activeUnit}` : "—"}</td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{t.activeProperty ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${KYC_COLORS[t.kycStatus] ?? "bg-gray-100 text-gray-600"}`}>{t.kycStatus}</span>
+                </td>
+                <td className="px-4 py-3 text-[12px] text-gray-600">{t.employerName ?? "—"}</td>
+                <td className="px-4 py-3">
+                  <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${t.activeUnit ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
+                    {t.activeUnit ? "ACTIVE" : "NO LEASE"}
+                  </span>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button onClick={() => setEditingId(t.id)} title="Edit tenant"
+                      className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors">
+                      <Pencil size={12} className="text-blue-600" />
+                    </button>
+                    <button onClick={() => deleteTenant(t.id, `${t.user.firstName} ${t.user.lastName}`)} title="Delete tenant"
+                      className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors">
+                      <Trash2 size={12} className="text-red-500" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {editingId && (() => {
+        const t = tenants.find((x) => x.id === editingId)!;
+        return <EditTenantModal tenant={{ id: t.id, employerName: t.employerName, emergencyContact: null, emergencyPhone: null, user: t.user }} onClose={() => { setEditingId(null); router.refresh(); }} />;
+      })()}
     </div>
   );
 }

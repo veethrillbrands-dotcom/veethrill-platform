@@ -1,57 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Topbar } from "@/components/layout/Topbar";
-import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import { X, FileText, TrendingUp, MapPin, Building2 } from "lucide-react";
+import { X, Building2, TrendingUp, MapPin, Users, Trash2 } from "lucide-react";
 
 type Dossier = {
-  id: string; title: string; type: string; location: string; totalUnits: number; priceFrom: number;
-  priceTo: number; developer: string; completionDate: string; yieldEstimate: number;
-  status: string; highlights: string; targetInvestor: string; createdAt: string;
+  id: string; title: string; type: string; location: string; totalUnits: number;
+  priceFrom: number; priceTo: number; developer: string; completionDate: string | null;
+  yieldEstimate: number; targetInvestor: string | null; highlights: string | null; status: string;
 };
 
-const SEED: Dossier[] = [
-  { id: "1", title: "Ikoyi Waterfront Towers", type: "Luxury Residential", location: "Ikoyi, Lagos", totalUnits: 48, priceFrom: 250000000, priceTo: 850000000, developer: "Eko Landmark Devs", completionDate: "2027-Q2", yieldEstimate: 8.5, status: "Active", highlights: "Panoramic ocean views, smart home automation, penthouse collection", targetInvestor: "HNI / Diaspora", createdAt: "2026-01-10" },
-  { id: "2", title: "Lekki Tech District Hub", type: "Mixed-Use Commercial", location: "Lekki Phase 2, Lagos", totalUnits: 120, priceFrom: 35000000, priceTo: 180000000, developer: "FutureBuild NG", completionDate: "2026-Q4", yieldEstimate: 11.2, status: "Active", highlights: "Co-working, retail, and residential blend; on Lekki-Epe Expressway", targetInvestor: "Corporate / Institutional", createdAt: "2026-02-15" },
-  { id: "3", title: "Abuja Garden Estates", type: "Affordable Residential", location: "Lugbe, Abuja", totalUnits: 200, priceFrom: 18000000, priceTo: 45000000, developer: "Capital Homes Ltd", completionDate: "2028-Q1", yieldEstimate: 6.0, status: "Sold Out", highlights: "Solar-powered, government-approved estate, good transport links", targetInvestor: "Middle Income / NHF", createdAt: "2026-03-01" },
-  { id: "4", title: "Port Harcourt Shoreline", type: "Shortlet/Hospitality", location: "GRA Phase 2, Port Harcourt", totalUnits: 32, priceFrom: 45000000, priceTo: 90000000, developer: "Rivers Realty", completionDate: "2027-Q1", yieldEstimate: 14.0, status: "Coming Soon", highlights: "Serviced apartments for corporate guests and oil sector workers", targetInvestor: "Diaspora / HNI", createdAt: "2026-04-20" },
-];
-
-const TYPES = ["Luxury Residential", "Mixed-Use Commercial", "Affordable Residential", "Shortlet/Hospitality", "Industrial", "Land"];
-const STATUS_BADGE: Record<string, "success" | "info" | "warning" | "error" | "default"> = {
-  Active: "success", "Coming Soon": "info", "Sold Out": "default", Archived: "error",
+const STATUS_BADGE: Record<string, "success" | "warning" | "default"> = {
+  Active: "success", "Coming Soon": "warning", Sold: "default",
 };
 
-function AddDossierModal({ onAdd, onClose }: { onAdd: (d: Dossier) => void; onClose: () => void }) {
+function AddDossierModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    title: "", type: "Luxury Residential", location: "", totalUnits: "", priceFrom: "", priceTo: "",
-    developer: "", completionDate: "", yieldEstimate: "", targetInvestor: "HNI / Diaspora", highlights: "",
+    title: "", type: "Residential", location: "", developer: "", totalUnits: "0",
+    priceFrom: "", priceTo: "", yieldEstimate: "0", completionDate: "", targetInvestor: "", highlights: "", status: "Active",
   });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  function save() {
-    onAdd({
-      ...form, id: Date.now().toString(), totalUnits: Number(form.totalUnits),
-      priceFrom: Number(form.priceFrom), priceTo: Number(form.priceTo),
-      yieldEstimate: Number(form.yieldEstimate), status: "Active",
-      createdAt: new Date().toISOString().split("T")[0],
-    });
-    onClose();
+  async function save() {
+    if (!form.title || !form.location) return;
+    setSaving(true);
+    await fetch("/api/crm/dossiers", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    setSaving(false); onCreated(); onClose();
   }
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden max-h-[90vh] flex flex-col">
         <div className="px-6 py-5 border-b flex items-center justify-between flex-shrink-0" style={{ background: "var(--navy)" }}>
-          <div className="text-[15px] font-bold text-white">Create Investment Dossier</div>
+          <div className="text-[15px] font-bold text-white">Add Investment Dossier</div>
           <button onClick={onClose} className="text-white/60 hover:text-white"><X size={20} /></button>
         </div>
         <div className="p-6 space-y-4 overflow-y-auto">
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Development Name</label>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Project Title *</label>
             <input value={form.title} onChange={(e) => set("title", e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
           </div>
@@ -60,18 +49,32 @@ function AddDossierModal({ onAdd, onClose }: { onAdd: (d: Dossier) => void; onCl
               <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Type</label>
               <select value={form.type} onChange={(e) => set("type", e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400">
-                {TYPES.map((t) => <option key={t}>{t}</option>)}
+                {["Residential", "Commercial", "Mixed-Use", "Industrial", "Retail", "Land"].map((t) => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Location</label>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Status</label>
+              <select value={form.status} onChange={(e) => set("status", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400">
+                {["Active", "Coming Soon", "Sold"].map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Location *</label>
               <input value={form.location} onChange={(e) => set("location", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Developer</label>
+              <input value={form.developer} onChange={(e) => set("developer", e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
             </div>
           </div>
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Total Units</label>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Units</label>
               <input type="number" value={form.totalUnits} onChange={(e) => set("totalUnits", e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
             </div>
@@ -88,42 +91,33 @@ function AddDossierModal({ onAdd, onClose }: { onAdd: (d: Dossier) => void; onCl
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Developer</label>
-              <input value={form.developer} onChange={(e) => set("developer", e.target.value)}
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Yield Estimate (%)</label>
+              <input type="number" step="0.5" value={form.yieldEstimate} onChange={(e) => set("yieldEstimate", e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
             </div>
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Completion</label>
-              <input placeholder="e.g. 2027-Q2" value={form.completionDate} onChange={(e) => set("completionDate", e.target.value)}
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Completion Date</label>
+              <input value={form.completionDate} onChange={(e) => set("completionDate", e.target.value)} placeholder="Q4 2026"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Est. Yield (%)</label>
-              <input type="number" step="0.1" value={form.yieldEstimate} onChange={(e) => set("yieldEstimate", e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
-            </div>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Target Investor</label>
-              <select value={form.targetInvestor} onChange={(e) => set("targetInvestor", e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400">
-                {["HNI / Diaspora", "Middle Income / NHF", "Corporate / Institutional", "Retail", "All"].map((i) => <option key={i}>{i}</option>)}
-              </select>
             </div>
           </div>
           <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Target Investor</label>
+            <input value={form.targetInvestor ?? ""} onChange={(e) => set("targetInvestor", e.target.value)} placeholder="e.g. HNI, Diaspora, Institutional"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+          </div>
+          <div>
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Key Highlights</label>
-            <textarea value={form.highlights} onChange={(e) => set("highlights", e.target.value)} rows={2}
+            <textarea value={form.highlights ?? ""} onChange={(e) => set("highlights", e.target.value)} rows={2}
+              placeholder="Bullet points separated by commas"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 resize-none" />
           </div>
         </div>
         <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
-          <button onClick={save} disabled={!form.title || !form.location}
-            className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40"
-            style={{ background: "var(--emerald)" }}>
-            ✓ Create Dossier
+          <button onClick={save} disabled={saving || !form.title || !form.location}
+            className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40" style={{ background: "var(--navy)" }}>
+            {saving ? "Saving…" : "✓ Add Dossier"}
           </button>
         </div>
       </div>
@@ -132,23 +126,38 @@ function AddDossierModal({ onAdd, onClose }: { onAdd: (d: Dossier) => void; onCl
 }
 
 export default function DossiersPage() {
-  const [dossiers, setDossiers] = useState<Dossier[]>(SEED);
+  const [dossiers, setDossiers] = useState<Dossier[]>([]);
+  const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
-  const activeDossiers = dossiers.filter((d) => d.status === "Active");
-  const totalValue = dossiers.reduce((s, d) => s + d.totalUnits * d.priceFrom, 0);
+  const load = useCallback(async () => {
+    setLoading(true);
+    const res = await fetch("/api/crm/dossiers");
+    setDossiers(await res.json());
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function del(id: string) {
+    if (!confirm("Delete this dossier?")) return;
+    await fetch(`/api/crm/dossiers/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  const totalValue = dossiers.reduce((s, d) => s + d.priceTo, 0);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Investment Dossiers" action={{ label: "New Dossier", onClick: () => setAdding(true) }} />
+      <Topbar title="Investment Dossiers" action={{ label: "Add Dossier", onClick: () => setAdding(true) }} />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Total Dossiers", value: dossiers.length, icon: <FileText size={16} />, color: "var(--navy)" },
-            { label: "Active Listings", value: activeDossiers.length, icon: <Building2 size={16} />, color: "var(--emerald)" },
-            { label: "Portfolio Value", value: formatCurrency(totalValue), icon: <TrendingUp size={16} />, color: "var(--gold)" },
-            { label: "Locations", value: new Set(dossiers.map((d) => d.location.split(",")[1]?.trim())).size, icon: <MapPin size={16} />, color: "#3B82F6" },
+            { label: "Active Dossiers", value: dossiers.filter((d) => d.status === "Active").length, icon: <Building2 size={16} />, color: "var(--navy)" },
+            { label: "Total Units", value: dossiers.reduce((s, d) => s + d.totalUnits, 0), icon: <Users size={16} />, color: "var(--gold)" },
+            { label: "Portfolio Value", value: formatCurrency(totalValue), icon: <TrendingUp size={16} />, color: "var(--emerald)" },
+            { label: "Locations", value: new Set(dossiers.map((d) => d.location)).size, icon: <MapPin size={16} />, color: "#3B82F6" },
           ].map((k) => (
             <div key={k.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${k.color}15`, color: k.color }}>{k.icon}</div>
@@ -160,75 +169,71 @@ export default function DossiersPage() {
           ))}
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          {dossiers.map((d) => (
-            <div key={d.id} className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm">
-              <div className="flex items-start justify-between mb-3">
-                <div>
-                  <div className="text-[15px] font-bold text-gray-900">{d.title}</div>
-                  <div className="text-[12px] text-gray-500 flex items-center gap-1 mt-0.5"><MapPin size={12} />{d.location}</div>
-                </div>
-                <Badge variant={STATUS_BADGE[d.status] ?? "default"}>{d.status}</Badge>
-              </div>
-              <div className="grid grid-cols-3 gap-3 mb-3">
-                <div className="bg-gray-50 rounded-xl p-2.5 text-center">
-                  <div className="text-[10px] text-gray-400 mb-0.5">Units</div>
-                  <div className="text-[14px] font-black" style={{ color: "var(--navy)" }}>{d.totalUnits}</div>
-                </div>
-                <div className="bg-emerald-50 rounded-xl p-2.5 text-center">
-                  <div className="text-[10px] text-gray-400 mb-0.5">Est. Yield</div>
-                  <div className="text-[14px] font-black text-emerald-600">{d.yieldEstimate}%</div>
-                </div>
-                <div className="bg-yellow-50 rounded-xl p-2.5 text-center">
-                  <div className="text-[10px] text-gray-400 mb-0.5">Completion</div>
-                  <div className="text-[12px] font-bold text-yellow-700">{d.completionDate}</div>
-                </div>
-              </div>
-              <div className="text-[12px] text-gray-700 mb-1">
-                <span className="font-semibold" style={{ color: "var(--emerald)" }}>{formatCurrency(d.priceFrom)}</span>
-                <span className="text-gray-400"> — </span>
-                <span className="font-semibold" style={{ color: "var(--navy)" }}>{formatCurrency(d.priceTo)}</span>
-              </div>
-              <div className="text-[11.5px] text-gray-500 mb-2">👤 {d.developer} · 🎯 {d.targetInvestor}</div>
-              <div className="text-[11.5px] text-gray-400 italic">{d.highlights}</div>
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="text-center text-gray-400 py-12 text-[13px]">Loading…</div>
+        ) : dossiers.length === 0 ? (
+          <div className="text-center text-gray-400 py-12 text-[13px]">No investment dossiers yet.</div>
+        ) : (
+          <div className="grid grid-cols-3 gap-5">
+            {dossiers.map((d) => (
+              <div key={d.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group relative">
+                <button onClick={() => del(d.id)}
+                  className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-opacity bg-white/80 backdrop-blur-sm z-10">
+                  <Trash2 size={12} className="text-red-500" />
+                </button>
 
-        <Card>
-          <CardHeader><CardTitle sub="Comparison view">Dossier Comparison Table</CardTitle></CardHeader>
-          <CardBody noPad>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    {["Development", "Type", "Location", "Units", "Price Range", "Yield", "Developer", "Completion", "Status"].map((h) => (
-                      <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 first:pl-5">{h}</th>
+                <div className="h-2" style={{ background: d.status === "Active" ? "var(--emerald)" : d.status === "Coming Soon" ? "var(--gold)" : "#94A3B8" }} />
+
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-3 pr-6">
+                    <div>
+                      <div className="text-[14px] font-black text-gray-900 leading-tight">{d.title}</div>
+                      <div className="text-[11.5px] text-gray-400 mt-0.5 flex items-center gap-1"><MapPin size={10} />{d.location}</div>
+                    </div>
+                    <Badge variant={STATUS_BADGE[d.status] ?? "default"}>{d.status}</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {[
+                      { label: "Type", value: d.type },
+                      { label: "Developer", value: d.developer || "—" },
+                      { label: "Units", value: d.totalUnits },
+                      { label: "Completion", value: d.completionDate || "TBC" },
+                      { label: "Target", value: d.targetInvestor || "All" },
+                      { label: "Yield", value: `${d.yieldEstimate}% p.a.` },
+                    ].map(({ label, value }) => (
+                      <div key={label} className="bg-gray-50 rounded-xl p-2.5">
+                        <div className="text-[9.5px] font-bold uppercase tracking-wider text-gray-400">{label}</div>
+                        <div className="text-[11.5px] font-semibold text-gray-800 mt-0.5 truncate">{value}</div>
+                      </div>
                     ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {dossiers.map((d) => (
-                    <tr key={d.id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                      <td className="px-4 py-3 pl-5 text-[13px] font-semibold text-gray-900">{d.title}</td>
-                      <td className="px-4 py-3 text-[12px] text-gray-600">{d.type}</td>
-                      <td className="px-4 py-3 text-[12px] text-gray-600">{d.location}</td>
-                      <td className="px-4 py-3 text-[12.5px] font-semibold text-gray-900">{d.totalUnits}</td>
-                      <td className="px-4 py-3 text-[11.5px] text-gray-700">{formatCurrency(d.priceFrom)} – {formatCurrency(d.priceTo)}</td>
-                      <td className="px-4 py-3 text-[13px] font-black" style={{ color: "var(--emerald)" }}>{d.yieldEstimate}%</td>
-                      <td className="px-4 py-3 text-[12px] text-gray-600">{d.developer}</td>
-                      <td className="px-4 py-3 text-[12px] text-gray-600">{d.completionDate}</td>
-                      <td className="px-4 py-3"><Badge variant={STATUS_BADGE[d.status] ?? "default"}>{d.status}</Badge></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardBody>
-        </Card>
+                  </div>
+
+                  <div className="border-t border-gray-100 pt-3">
+                    <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Price Range</div>
+                    <div className="text-[13px] font-black" style={{ color: "var(--navy)" }}>
+                      {formatCurrency(d.priceFrom)} – {formatCurrency(d.priceTo)}
+                    </div>
+                  </div>
+
+                  {d.highlights && (
+                    <div className="mt-3 border-t border-gray-100 pt-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Highlights</div>
+                      <div className="flex flex-wrap gap-1">
+                        {d.highlights.split(",").map((h) => (
+                          <span key={h} className="text-[10px] font-semibold bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full">{h.trim()}</span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
 
       </div>
-      {adding && <AddDossierModal onAdd={(d) => setDossiers((prev) => [d, ...prev])} onClose={() => setAdding(false)} />}
+      {adding && <AddDossierModal onClose={() => setAdding(false)} onCreated={load} />}
     </div>
   );
 }

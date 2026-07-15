@@ -451,11 +451,124 @@ model Document {
   name       String
   url        String
   type       String
+  folder     String   @default("General")
   size       Int?
-  entityType String
-  entityId   String
+  entityType String?
+  entityId   String?
   uploadedBy String
   createdAt  DateTime @default(now())
 
   @@map("documents")
+}
+
+// ─── CRM ────────────────────────────────────────────────────────────────────
+
+model CrmContact {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  email     String?
+  phone     String?
+  company   String?
+  location  String?
+  source    String?
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deals CrmDeal[]
+
+  @@map("crm_contacts")
+}
+
+model CrmDeal {
+  id          String    @id @default(cuid())
+  title       String
+  contactId   String?
+  contactName String
+  value       Float     @default(0)
+  stage       String    @default("Enquiry")
+  probability Int       @default(30)
+  dueDate     DateTime?
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  contact CrmContact? @relation(fields: [contactId], references: [id])
+
+  @@map("crm_deals")
+}
+
+model CrmCommission {
+  id               String    @id @default(cuid())
+  agent            String
+  property         String
+  dealValue        Float     @default(0)
+  commissionRate   Float     @default(3)
+  commissionAmount Float     @default(0)
+  type             String    @default("Sale")
+  status           String    @default("Pending")
+  saleDate         DateTime?
+  paidDate         DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("crm_commissions")
+}
+
+model CrmTrainingProgram {
+  id          String    @id @default(cuid())
+  title       String
+  category    String
+  trainer     String
+  targetRole  String    @default("All")
+  startDate   DateTime
+  endDate     DateTime?
+  venue       String?
+  capacity    Int       @default(20)
+  enrolled    Int       @default(0)
+  status      String    @default("Upcoming")
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("crm_training_programs")
+}
+
+model CrmDossier {
+  id             String   @id @default(cuid())
+  title          String
+  type           String
+  location       String
+  totalUnits     Int      @default(0)
+  priceFrom      Float    @default(0)
+  priceTo        Float    @default(0)
+  developer      String
+  completionDate String?
+  yieldEstimate  Float    @default(0)
+  targetInvestor String?
+  highlights     String?
+  status         String   @default("Active")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("crm_dossiers")
+}
+
+model CrmSubscription {
+  id                 String    @id @default(cuid())
+  subscriber         String
+  email              String
+  phone              String?
+  type               String    @default("Prospect")
+  interests          String[]
+  budget             String?
+  preferredLocations String?
+  frequency          String    @default("Weekly")
+  status             String    @default("Active")
+  lastNotified       DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@map("crm_subscriptions")
 }

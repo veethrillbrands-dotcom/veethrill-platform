@@ -1,8 +1,6 @@
-import { TenantsTopbar, TenantRowActions } from "./TenantsClient";
+import { TenantsTopbar, TenantsTable } from "./TenantsClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { db } from "@/lib/db";
-import { getInitials } from "@/lib/utils";
 import { UserCheck, Users, Clock, CheckCircle } from "lucide-react";
 
 async function getTenants() {
@@ -15,9 +13,6 @@ async function getTenants() {
   });
 }
 
-const KYC_VARIANT: Record<string, "success" | "warning" | "error" | "default"> = {
-  VERIFIED: "success", PENDING: "warning", REJECTED: "error",
-};
 
 export default async function TenantsPage() {
   const tenants = await getTenants();
@@ -55,69 +50,15 @@ export default async function TenantsPage() {
         <Card>
           <CardHeader>
             <CardTitle sub={`${tenants.length} registered tenants`}>Tenant Directory</CardTitle>
-            <button className="text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
-              Export CSV
-            </button>
           </CardHeader>
           <CardBody noPad>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    {["Tenant", "Contact", "Unit", "Property", "KYC", "Employer", "Lease Status", ""].map((h) => (
-                      <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 first:pl-5">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {tenants.length === 0 ? (
-                    <tr><td colSpan={8} className="text-center text-gray-400 py-10 text-[13px]">No tenants yet.</td></tr>
-                  ) : tenants.map((t) => {
-                    const activeLease = t.leases[0];
-                    return (
-                      <tr key={t.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
-                        <td className="px-4 py-3 pl-5">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-[12px] flex-shrink-0"
-                              style={{ background: "linear-gradient(135deg, var(--gold), #b8960a)", color: "var(--navy)" }}>
-                              {getInitials(`${t.user.firstName} ${t.user.lastName}`)}
-                            </div>
-                            <div>
-                              <div className="text-[13px] font-semibold text-gray-900">{t.user.firstName} {t.user.lastName}</div>
-                              <div className="text-[11px] text-gray-400">{t.user.email}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-[12px] text-gray-600">{t.user.phone ?? "—"}</td>
-                        <td className="px-4 py-3">
-                          {activeLease ? (
-                            <span className="text-[12px] font-semibold text-gray-900">Unit {activeLease.unit.unitNumber}</span>
-                          ) : <span className="text-gray-400 text-[12px]">—</span>}
-                        </td>
-                        <td className="px-4 py-3 text-[12px] text-gray-600">
-                          {activeLease?.unit.property.name ?? "—"}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant={KYC_VARIANT[t.kycStatus] ?? "default"}>{t.kycStatus}</Badge>
-                        </td>
-                        <td className="px-4 py-3 text-[12px] text-gray-600">{t.employerName ?? "—"}</td>
-                        <td className="px-4 py-3">
-                          {activeLease ? (
-                            <Badge variant="success">ACTIVE</Badge>
-                          ) : (
-                            <Badge variant="default">NO LEASE</Badge>
-                          )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <TenantRowActions tenant={t} />
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <div className="px-5 pt-4">
+              <TenantsTable tenants={tenants.map((t) => ({
+                id: t.id, kycStatus: t.kycStatus, employerName: t.employerName,
+                user: { firstName: t.user.firstName, lastName: t.user.lastName, email: t.user.email, phone: t.user.phone },
+                activeUnit: t.leases[0]?.unit.unitNumber ?? null,
+                activeProperty: t.leases[0]?.unit.property.name ?? null,
+              }))} />
             </div>
           </CardBody>
         </Card>

@@ -6,7 +6,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { AddWorkOrderModal } from "@/components/modals/AddWorkOrderModal";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import { Trash2, User } from "lucide-react";
+import { Trash2, User, CheckSquare } from "lucide-react";
 
 const PRIORITY_DOT: Record<string, string> = {
   URGENT: "bg-red-500", HIGH: "bg-orange-500", MEDIUM: "bg-yellow-500", LOW: "bg-blue-400", ROUTINE: "bg-gray-300",
@@ -47,6 +47,18 @@ export function WorkOrdersTable({ orders }: { orders: WorkOrder[] }) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+
+  function toggleSelect(id: string) { setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }
+  function toggleAll() { setSelected(orders.length > 0 && orders.every((o) => selected.has(o.id)) ? new Set() : new Set(orders.map((o) => o.id))); }
+  const allChecked = orders.length > 0 && orders.every((o) => selected.has(o.id));
+
+  async function bulkDelete() {
+    if (!confirm(`Delete ${selected.size} work orders?`)) return;
+    await Promise.all([...selected].map((id) => fetch(`/api/maintenance/${id}`, { method: "DELETE" })));
+    setSelected(new Set());
+    router.refresh();
+  }
 
   async function updateStatus(id: string, status: string) {
     setLoading(id);
@@ -69,18 +81,32 @@ export function WorkOrdersTable({ orders }: { orders: WorkOrder[] }) {
   }
 
   return (
+    <div>
+      {selected.size > 0 && (
+        <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 mb-4">
+          <CheckSquare size={14} className="text-red-600" />
+          <span className="text-[13px] font-semibold text-red-700">{selected.size} selected</span>
+          <button onClick={bulkDelete} className="flex items-center gap-1.5 text-[12px] font-bold text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-lg transition-colors">
+            <Trash2 size={12} />Delete Selected
+          </button>
+          <button onClick={() => setSelected(new Set())} className="text-[12px] text-red-500 hover:text-red-700">Clear</button>
+        </div>
+      )}
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="border-b border-gray-100">
+            <th className="pl-5 pr-2 py-3 w-8">
+              <input type="checkbox" checked={allChecked} onChange={toggleAll} className="w-3.5 h-3.5 rounded accent-yellow-500" />
+            </th>
             {["", "Work Order", "Property · Unit", "Category", "Priority", "Vendor", "Status", "SLA", "Est. Cost", ""].map((h) => (
-              <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 first:pl-5">{h}</th>
+              <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
           {orders.length === 0 ? (
-            <tr><td colSpan={10} className="text-center text-gray-400 py-10 text-[13px]">No work orders. Great job! 🎉</td></tr>
+            <tr><td colSpan={11} className="text-center text-gray-400 py-10 text-[13px]">No work orders. Great job! 🎉</td></tr>
           ) : orders.map((wo) => {
             const vendorName = wo.vendor
               ? (wo.vendor.companyName || `${wo.vendor.user.firstName} ${wo.vendor.user.lastName}`)
@@ -89,8 +115,11 @@ export function WorkOrdersTable({ orders }: { orders: WorkOrder[] }) {
               : null;
 
             return (
-              <tr key={wo.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors group">
+              <tr key={wo.id} className={`border-b border-gray-50 hover:bg-gray-50/50 transition-colors group ${selected.has(wo.id) ? "bg-blue-50/40" : ""}`}>
                 <td className="pl-5 pr-2 py-3">
+                  <input type="checkbox" checked={selected.has(wo.id)} onChange={() => toggleSelect(wo.id)} className="w-3.5 h-3.5 rounded accent-yellow-500" />
+                </td>
+                <td className="pr-2 py-3">
                   <div className={`w-2.5 h-2.5 rounded-full ${PRIORITY_DOT[wo.priority] ?? "bg-gray-300"}`} />
                 </td>
                 <td className="px-4 py-3">
@@ -149,6 +178,7 @@ export function WorkOrdersTable({ orders }: { orders: WorkOrder[] }) {
           })}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
