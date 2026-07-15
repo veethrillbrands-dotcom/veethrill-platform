@@ -1,93 +1,143 @@
 import { Topbar } from "@/components/layout/Topbar";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
-import { Badge, statusToBadgeVariant } from "@/components/ui/badge";
-import { KPICard } from "@/components/ui/kpi-card";
-import { mockPayments, mockKPIs } from "@/lib/mock-data";
+import { Badge } from "@/components/ui/badge";
+import { db } from "@/lib/db";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { CreditCard, AlertTriangle, TrendingUp } from "lucide-react";
+import { CreditCard, TrendingUp, AlertTriangle, CheckCircle } from "lucide-react";
 
-const GATEWAYS = [
-  { name: "Paystack", icon: "💳", color: "bg-emerald-100 text-emerald-700" },
-  { name: "Flutterwave", icon: "💳", color: "bg-blue-100 text-blue-700" },
-  { name: "Bank Transfer", icon: "🏦", color: "bg-yellow-100 text-yellow-700" },
-  { name: "Mobile Money", icon: "📱", color: "bg-orange-100 text-orange-700" },
-  { name: "Stripe (Intl)", icon: "💳", color: "bg-gray-100 text-gray-600" },
-];
+async function getPayments() {
+  return db.payment.findMany({
+    include: { tenant: { include: { user: true } }, lease: { include: { unit: { include: { property: true } } } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
 
-export default function PaymentsPage() {
+const STATUS_BADGE: Record<string, "success" | "warning" | "error" | "default" | "info"> = {
+  PAID: "success", PENDING: "warning", OVERDUE: "error", PARTIAL: "info", REFUNDED: "default",
+};
+const METHOD_ICON: Record<string, string> = {
+  PAYSTACK: "🟢", FLUTTERWAVE: "🟡", STRIPE: "🔵", BANK_TRANSFER: "🏦", CASH: "💵",
+};
+
+export default async function PaymentsPage() {
+  const payments = await getPayments();
+
+  const paid = payments.filter((p) => p.status === "PAID");
+  const overdue = payments.filter((p) => p.status === "OVERDUE");
+  const totalCollected = paid.reduce((s, p) => s + p.amount, 0);
+  const totalOverdue = overdue.reduce((s, p) => s + p.amount, 0);
+
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar title="Rent & Payments" action={{ label: "Record Payment" }} />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
+        {/* KPIs */}
         <div className="grid grid-cols-4 gap-4">
-          <KPICard label="Collected This Month" value={formatCurrency(mockKPIs.monthlyRevenue)} change={12.4} accentColor="var(--emerald)" icon={<TrendingUp size={18} style={{ color: "var(--emerald)" }} />} />
-          <KPICard label="Overdue" value={formatCurrency(mockKPIs.overdueRent)} accentColor="#EF4444" icon={<AlertTriangle size={18} className="text-red-500" />} />
-          <KPICard label="Collection Rate" value={`${mockKPIs.collectionRate}%`} change={1.8} accentColor="var(--gold)" />
-          <KPICard label="Overdue Tenants" value="4" accentColor="#F97316" />
+          {[
+            { label: "Total Collected", value: formatCurrency(totalCollected), icon: <CheckCircle size={16} />, color: "var(--emerald)" },
+            { label: "Overdue", value: formatCurrency(totalOverdue), icon: <AlertTriangle size={16} />, color: "#EF4444" },
+            { label: "Transactions", value: payments.length, icon: <CreditCard size={16} />, color: "var(--navy)" },
+            { label: "Collection Rate", value: payments.length > 0 ? `${Math.round((paid.length / payments.length) * 100)}%` : "0%", icon: <TrendingUp size={16} />, color: "var(--gold)" },
+          ].map((k) => (
+            <div key={k.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${k.color}15`, color: k.color }}>
+                {k.icon}
+              </div>
+              <div>
+                <div className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">{k.label}</div>
+                <div className="text-[18px] font-black" style={{ color: k.color }}>{k.value}</div>
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Payment Methods */}
+        {/* Payment Ledger */}
         <Card>
           <CardHeader>
-            <CardTitle>Accepted Payment Methods</CardTitle>
+            <CardTitle sub={`${payments.length} transactions`}>Payment Ledger</CardTitle>
+            <button className="text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+              Export
+            </button>
           </CardHeader>
-          <CardBody className="flex gap-3 flex-wrap">
-            {GATEWAYS.map((g) => (
-              <div key={g.name} className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-semibold ${g.color}`}>
-                <span>{g.icon}</span> {g.name}
-              </div>
-            ))}
+          <CardBody noPad>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    {["Reference", "Tenant", "Unit · Property", "Type", "Method", "Amount", "Due Date", "Status"].map((h) => (
+                      <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 first:pl-5">{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {payments.length === 0 ? (
+                    <tr><td colSpan={8} className="text-center text-gray-400 py-10 text-[13px]">No payments recorded yet.</td></tr>
+                  ) : payments.map((p) => (
+                    <tr key={p.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 pl-5">
+                        <span className="text-[11.5px] font-mono text-gray-600">{p.reference}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-[13px] font-semibold text-gray-900">
+                          {p.tenant.user.firstName} {p.tenant.user.lastName}
+                        </div>
+                        <div className="text-[11px] text-gray-400">{p.tenant.user.email}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {p.lease ? (
+                          <>
+                            <div className="text-[12px] font-semibold text-gray-900">Unit {p.lease.unit.unitNumber}</div>
+                            <div className="text-[11px] text-gray-400">{p.lease.unit.property.name}</div>
+                          </>
+                        ) : <span className="text-gray-400 text-[12px]">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">{p.type}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[12px] text-gray-700">{METHOD_ICON[p.method] ?? "💳"} {p.method.replace("_", " ")}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`text-[14px] font-black ${p.status === "PAID" ? "text-emerald-600" : p.status === "OVERDUE" ? "text-red-600" : "text-gray-900"}`}>
+                          {formatCurrency(p.amount)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-[12px] text-gray-600 whitespace-nowrap">
+                        {formatDate(p.dueDate.toISOString())}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={STATUS_BADGE[p.status] ?? "default"}>{p.status}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </CardBody>
         </Card>
 
-        {/* Payment Table */}
-        <Card>
-          <CardHeader>
-            <CardTitle sub="All rent and payment transactions">Payment Ledger</CardTitle>
-            <div className="flex gap-2">
-              <select className="text-[12px] border border-gray-100 px-3 py-1.5 rounded-lg outline-none text-gray-600 bg-white">
-                <option>All Statuses</option>
-                <option>Paid</option>
-                <option>Overdue</option>
-                <option>Pending</option>
-              </select>
-              <button className="text-[11.5px] font-semibold text-gray-500 border border-gray-100 px-3 py-1.5 rounded-lg hover:bg-gray-50">Export</button>
+        {/* Gateway Cards */}
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { name: "Paystack", icon: "🟢", color: "#00C3F0", desc: "Nigeria · Cards · Bank" },
+            { name: "Flutterwave", icon: "🟡", color: "#F5A623", desc: "Africa · Cards · Mobile" },
+            { name: "Stripe", icon: "🔵", color: "#6772E5", desc: "International · Cards" },
+            { name: "Bank Transfer", icon: "🏦", color: "var(--navy)", desc: "Direct · NEFT · RTGS" },
+          ].map((gw) => (
+            <div key={gw.name} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-xl">{gw.icon}</span>
+                <span className="text-[13px] font-bold text-gray-900">{gw.name}</span>
+              </div>
+              <div className="text-[11px] text-gray-400">{gw.desc}</div>
+              <div className="mt-2">
+                <span className="text-[10px] font-bold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">Active</span>
+              </div>
             </div>
-          </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  {["Tenant", "Property / Unit", "Type", "Amount", "Method", "Reference", "Due Date", "Paid At", "Status", ""].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-bold text-gray-400 uppercase tracking-[0.5px] border-b border-gray-100 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {mockPayments.map((p) => (
-                  <tr key={p.id} className="hover:bg-yellow-50/30 border-b border-gray-100 last:border-0 transition-colors">
-                    <td className="px-4 py-3 text-[12.5px] font-semibold text-gray-900">{p.tenantName}</td>
-                    <td className="px-4 py-3">
-                      <div className="text-[12px] text-gray-900">Unit {p.unitNumber}</div>
-                      <div className="text-[11px] text-gray-400">{p.propertyName}</div>
-                    </td>
-                    <td className="px-4 py-3 text-[12px] text-gray-600">{p.type}</td>
-                    <td className="px-4 py-3 text-[12.5px] font-bold text-gray-900">{formatCurrency(p.amount)}</td>
-                    <td className="px-4 py-3 text-[12px] text-gray-600">{p.method.replace("_", " ")}</td>
-                    <td className="px-4 py-3 text-[11.5px] text-gray-500 font-mono">{p.reference}</td>
-                    <td className="px-4 py-3 text-[12px] text-gray-600">{formatDate(p.dueDate)}</td>
-                    <td className="px-4 py-3 text-[12px] text-gray-600">{p.paidAt ? formatDate(p.paidAt) : <span className="text-gray-300">—</span>}</td>
-                    <td className="px-4 py-3"><Badge variant={statusToBadgeVariant(p.status)}>{p.status}</Badge></td>
-                    <td className="px-4 py-3">
-                      <button className="text-[11.5px] font-semibold" style={{ color: "var(--gold)" }}>Receipt →</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+          ))}
+        </div>
+
       </div>
     </div>
   );

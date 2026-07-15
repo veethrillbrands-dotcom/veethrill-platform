@@ -1,107 +1,118 @@
 import { Topbar } from "@/components/layout/Topbar";
-import { Card, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge, statusToBadgeVariant } from "@/components/ui/badge";
-import { KPICard } from "@/components/ui/kpi-card";
-import { mockWorkOrders } from "@/lib/mock-data";
-import { formatRelativeTime, formatCurrency } from "@/lib/utils";
-import type { WorkOrderPriority } from "@/lib/types";
-import { Cog, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { db } from "@/lib/db";
+import { formatCurrency } from "@/lib/utils";
+import { Wrench, AlertTriangle, Clock, CheckCircle } from "lucide-react";
 
-const PRIORITY_COLORS: Record<WorkOrderPriority, string> = {
-  URGENT: "bg-red-100 text-red-700",
-  HIGH: "bg-orange-100 text-orange-700",
-  MEDIUM: "bg-yellow-100 text-yellow-700",
-  LOW: "bg-blue-100 text-blue-700",
-  ROUTINE: "bg-gray-100 text-gray-600",
+async function getWorkOrders() {
+  return db.workOrder.findMany({
+    include: { property: true, unit: true, vendor: { include: { user: true } } },
+    orderBy: [{ priority: "asc" }, { raisedAt: "desc" }],
+  });
+}
+
+const PRIORITY_DOT: Record<string, string> = {
+  URGENT: "bg-red-500", HIGH: "bg-orange-500", MEDIUM: "bg-yellow-500",
+  LOW: "bg-blue-400", ROUTINE: "bg-gray-300",
+};
+const PRIORITY_BADGE: Record<string, "error" | "warning" | "default" | "info" | "success"> = {
+  URGENT: "error", HIGH: "warning", MEDIUM: "default", LOW: "info", ROUTINE: "default",
+};
+const STATUS_BADGE: Record<string, "success" | "info" | "warning" | "default" | "error"> = {
+  COMPLETED: "success", IN_PROGRESS: "info", ASSIGNED: "warning", OPEN: "default", CANCELLED: "error",
 };
 
-const PRIORITY_DOT: Record<WorkOrderPriority, string> = {
-  URGENT: "bg-red-500",
-  HIGH: "bg-orange-500",
-  MEDIUM: "bg-yellow-500",
-  LOW: "bg-blue-500",
-  ROUTINE: "bg-gray-300",
-};
+export default async function MaintenancePage() {
+  const orders = await getWorkOrders();
 
-export default function MaintenancePage() {
-  const urgent = mockWorkOrders.filter((w) => w.priority === "URGENT").length;
-  const open = mockWorkOrders.filter((w) => w.status === "OPEN").length;
+  const open = orders.filter((w) => w.status === "OPEN").length;
+  const inProgress = orders.filter((w) => w.status === "IN_PROGRESS").length;
+  const urgent = orders.filter((w) => w.priority === "URGENT").length;
+  const totalEstimated = orders.reduce((s, w) => s + (w.estimatedCost ?? 0), 0);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Maintenance Management" action={{ label: "New Work Order" }} />
+      <Topbar title="Maintenance" action={{ label: "New Work Order" }} />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
-        <div className="grid grid-cols-5 gap-4">
-          <KPICard label="Urgent" value={`${urgent}`} accentColor="#EF4444" icon={<AlertTriangle size={16} className="text-red-500" />} />
-          <KPICard label="High Priority" value="6" accentColor="#F97316" />
-          <KPICard label="Open (Unassigned)" value={`${open}`} accentColor="#3B82F6" />
-          <KPICard label="SLA Met" value="87%" change={3.2} accentColor="var(--emerald)" icon={<CheckCircle size={16} style={{ color: "var(--emerald)" }} />} />
-          <KPICard label="Avg Resolution" value="18h" accentColor="var(--gold)" icon={<Clock size={16} style={{ color: "var(--gold)" }} />} />
+        {/* KPIs */}
+        <div className="grid grid-cols-4 gap-4">
+          {[
+            { label: "Open Orders", value: open, icon: <Wrench size={16} />, color: "#3B82F6" },
+            { label: "In Progress", value: inProgress, icon: <Clock size={16} />, color: "var(--gold)" },
+            { label: "Urgent", value: urgent, icon: <AlertTriangle size={16} />, color: "#EF4444" },
+            { label: "Est. Cost", value: formatCurrency(totalEstimated), icon: <CheckCircle size={16} />, color: "var(--emerald)" },
+          ].map((k) => (
+            <div key={k.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: `${k.color}15`, color: k.color }}>
+                {k.icon}
+              </div>
+              <div>
+                <div className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400">{k.label}</div>
+                <div className="text-[20px] font-black" style={{ color: k.color }}>{k.value}</div>
+              </div>
+            </div>
+          ))}
         </div>
 
+        {/* Work Orders Table */}
         <Card>
           <CardHeader>
-            <CardTitle sub={`${mockWorkOrders.length} total · 8 urgent`}>Work Orders</CardTitle>
-            <div className="flex gap-2">
-              <select className="text-[12px] border border-gray-100 px-3 py-1.5 rounded-lg outline-none text-gray-600 bg-white">
-                <option>All Priorities</option>
-                <option>Urgent</option>
-                <option>High</option>
-                <option>Medium</option>
-                <option>Low</option>
-                <option>Routine</option>
-              </select>
-              <select className="text-[12px] border border-gray-100 px-3 py-1.5 rounded-lg outline-none text-gray-600 bg-white">
-                <option>All Properties</option>
-              </select>
-            </div>
+            <CardTitle sub={`${orders.length} total work orders`}>Work Order Queue</CardTitle>
+            <button className="text-[11.5px] font-semibold px-3 py-1.5 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+              Filter
+            </button>
           </CardHeader>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  {["Issue", "Property / Unit", "Category", "Priority", "Assigned To", "Raised", "SLA", "Est. Cost", "Status", ""].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-[10.5px] font-bold text-gray-400 uppercase tracking-[0.5px] border-b border-gray-100 whitespace-nowrap">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {mockWorkOrders.map((wo) => (
-                  <tr key={wo.id} className="hover:bg-yellow-50/30 border-b border-gray-100 last:border-0 transition-colors">
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${PRIORITY_DOT[wo.priority]}`} />
-                        <div>
-                          <div className="text-[12.5px] font-semibold text-gray-900">{wo.title}</div>
-                          <div className="text-[11px] text-gray-400 max-w-[200px] truncate">{wo.description}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-[12px] font-medium text-gray-900">{wo.propertyName}</div>
-                      {wo.unitNumber && <div className="text-[11px] text-gray-400">Unit {wo.unitNumber}</div>}
-                    </td>
-                    <td className="px-4 py-3 text-[12px] text-gray-600">{wo.category}</td>
-                    <td className="px-4 py-3">
-                      <span className={`text-[10.5px] font-semibold px-2.5 py-0.5 rounded-full ${PRIORITY_COLORS[wo.priority]}`}>{wo.priority}</span>
-                    </td>
-                    <td className="px-4 py-3 text-[12px] text-gray-600">{wo.assignedVendorName ?? <span className="text-gray-300">—</span>}</td>
-                    <td className="px-4 py-3 text-[11.5px] text-gray-500">{formatRelativeTime(wo.raisedAt)}</td>
-                    <td className="px-4 py-3 text-[11.5px] text-gray-600">{wo.slaHours}h</td>
-                    <td className="px-4 py-3 text-[12px] font-medium text-gray-900">
-                      {wo.estimatedCost ? formatCurrency(wo.estimatedCost) : <span className="text-gray-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3"><Badge variant={statusToBadgeVariant(wo.status)}>{wo.status.replace("_", " ")}</Badge></td>
-                    <td className="px-4 py-3">
-                      <button className="text-[11.5px] font-semibold" style={{ color: "var(--gold)" }}>View →</button>
-                    </td>
+          <CardBody noPad>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    {["", "Work Order", "Property · Unit", "Category", "Priority", "Status", "SLA", "Est. Cost"].map((h) => (
+                      <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3 first:pl-5">{h}</th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {orders.length === 0 ? (
+                    <tr><td colSpan={8} className="text-center text-gray-400 py-10 text-[13px]">No work orders. Great job! 🎉</td></tr>
+                  ) : orders.map((wo) => (
+                    <tr key={wo.id} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <td className="pl-5 pr-2 py-3">
+                        <div className={`w-2.5 h-2.5 rounded-full ${PRIORITY_DOT[wo.priority] ?? "bg-gray-300"}`} />
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-[13px] font-semibold text-gray-900">{wo.title}</div>
+                        <div className="text-[11px] text-gray-400 max-w-[220px] truncate">{wo.description}</div>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="text-[12px] font-semibold text-gray-900">{wo.property.name}</div>
+                        {wo.unit && <div className="text-[11px] text-gray-400">Unit {wo.unit.unitNumber}</div>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">{wo.category}</span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={PRIORITY_BADGE[wo.priority] ?? "default"}>{wo.priority}</Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <Badge variant={STATUS_BADGE[wo.status] ?? "default"}>{wo.status.replace("_", " ")}</Badge>
+                      </td>
+                      <td className="px-4 py-3 text-[12px] text-gray-600 whitespace-nowrap">
+                        {wo.slaHours < 24 ? `${wo.slaHours}h` : `${Math.round(wo.slaHours / 24)}d`}
+                      </td>
+                      <td className="px-4 py-3 text-[12px] font-semibold text-gray-900">
+                        {wo.estimatedCost ? formatCurrency(wo.estimatedCost) : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardBody>
         </Card>
+
       </div>
     </div>
   );

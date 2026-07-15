@@ -25,9 +25,9 @@ export function CardTitle({ children, sub }: { children: React.ReactNode; sub?: 
   );
 }
 
-export function CardBody({ children, className }: { children: React.ReactNode; className?: string }) {
+export function CardBody({ children, className, noPad }: { children: React.ReactNode; className?: string; noPad?: boolean }) {
   return (
-    <div className={cn("px-5 py-4", className)}>
+    <div className={cn(noPad ? "" : "px-5 py-4", className)}>
       {children}
     </div>
   );
