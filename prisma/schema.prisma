@@ -555,6 +555,22 @@ model CrmDossier {
   @@map("crm_dossiers")
 }
 
+model CrmTeamMember {
+  id         String   @id @default(cuid())
+  name       String
+  role       String
+  email      String
+  phone      String?
+  target     Float    @default(0)
+  achieved   Float    @default(0)
+  active     Boolean  @default(true)
+  avatar     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("crm_team_members")
+}
+
 model CrmSubscription {
   id                 String    @id @default(cuid())
   subscriber         String
