@@ -23,9 +23,9 @@ export default async function TenantInvoicesPage() {
   };
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col min-h-screen">
       <PortalTopbar title="My Invoices & Receipts" />
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="flex-1 p-4 sm:p-6">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">

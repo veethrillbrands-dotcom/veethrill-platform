@@ -30,9 +30,9 @@ export default async function AgentContactsPage() {
   }, {});
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col min-h-screen">
       <PortalTopbar title="My Contacts" />
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+      <div className="flex-1 p-4 sm:p-6 space-y-5">
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
