@@ -1,22 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import Groq from "groq-sdk";
 import { db } from "@/lib/db";
 import { buildBusinessContext } from "@/lib/ai-context";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-async function callClaude(system: string, prompt: string): Promise<string> {
-  const res = await client.messages.create({
-    model: "claude-haiku-4-5-20251001",
+async function callGroq(system: string, prompt: string): Promise<string> {
+  const res = await client.chat.completions.create({
+    model: "llama-3.1-8b-instant",
     max_tokens: 600,
-    system,
-    messages: [{ role: "user", content: prompt }],
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: prompt },
+    ],
   });
-  return res.content.filter((c) => c.type === "text").map((c) => (c as { type: "text"; text: string }).text).join("");
+  return res.choices[0]?.message?.content ?? "";
 }
 
 export async function POST(req: NextRequest) {
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!process.env.GROQ_API_KEY) {
     return NextResponse.json({ suggestions: [], error: "AI not configured" });
   }
 
@@ -47,7 +49,7 @@ Open tasks: ${contact.tasks.length === 0 ? "None" : contact.tasks.map((t) => `${
 Upcoming meetings: ${contact.meetings.length === 0 ? "None" : contact.meetings.map((m) => `${m.title} on ${new Date(m.scheduledAt).toLocaleDateString("en-GB")}`).join("; ")}
 `;
 
-      const text = await callClaude(systemBase,
+      const text = await callGroq(systemBase,
         `Based on this contact's profile and interaction history, suggest 4 specific next steps the Veethrill team should take. Format as a JSON array of objects with keys: "title" (short action, max 8 words), "description" (1 sentence why), "type" (one of: CALL, EMAIL, FOLLOW_UP, MEETING, TASK, SITE_VISIT), "priority" (HIGH/MEDIUM/LOW). Return ONLY valid JSON array.\n\n${contactCtx}`
       );
       const match = text.match(/\[[\s\S]*\]/);
@@ -80,7 +82,7 @@ Upcoming meetings: ${deal.meetings.length}
 Last interaction: ${deal.contact?.activities[0] ? `${deal.contact.activities[0].type} on ${new Date(deal.contact.activities[0].activityAt).toLocaleDateString("en-GB")}` : "No recorded activities"}
 `;
 
-      const text = await callClaude(systemBase,
+      const text = await callGroq(systemBase,
         `Based on this deal's current stage and history, suggest 4 specific actions to progress it towards closing. Format as JSON array with keys: "title", "description", "type" (CALL/EMAIL/MEETING/FOLLOW_UP/SITE_VISIT/TASK), "priority". Return ONLY valid JSON array.\n\n${dealCtx}`
       );
       const match = text.match(/\[[\s\S]*\]/);
@@ -109,7 +111,7 @@ Active lease: ${activeLease ? `${activeLease.unit.property.name} Unit ${activeLe
 Overdue payments: ${tenant.payments.length} (total ₦${tenant.payments.reduce((s, p) => s + p.amount, 0).toLocaleString()})
 `;
 
-      const text = await callClaude(systemBase,
+      const text = await callGroq(systemBase,
         `Based on this tenant profile, suggest 4 specific next steps for the Veethrill team. Format as JSON array with keys: "title", "description", "type" (CALL/EMAIL/MEETING/FOLLOW_UP/TASK), "priority". Return ONLY valid JSON array.\n\n${tenantCtx}`
       );
       const match = text.match(/\[[\s\S]*\]/);
@@ -119,7 +121,7 @@ Overdue payments: ${tenant.payments.length} (total ₦${tenant.payments.reduce((
 
     if (type === "message_template") {
       const { recipient, purpose, additionalContext } = context ?? {};
-      const text = await callClaude(systemBase,
+      const text = await callGroq(systemBase,
         `Generate 3 ready-to-send message templates for ${purpose} to ${recipient}. ${additionalContext ?? ""}
 Return as JSON array of objects with keys: "channel" (WHATSAPP/EMAIL/SMS), "subject" (email only), "body" (the message text, warm but professional Nigerian business tone, use first name only). Return ONLY valid JSON array.`
       );
@@ -130,7 +132,7 @@ Return as JSON array of objects with keys: "channel" (WHATSAPP/EMAIL/SMS), "subj
 
     if (type === "meeting_agenda") {
       const { meetingTitle, attendees, linkedContact, linkedDeal, linkedProperty, duration } = context ?? {};
-      const text = await callClaude(systemBase,
+      const text = await callGroq(systemBase,
         `Generate a concise meeting agenda for: "${meetingTitle}"
 Duration: ${duration ?? 60} minutes
 Attendees: ${Array.isArray(attendees) ? attendees.map((a: { name: string; role?: string }) => `${a.name}${a.role ? ` (${a.role})` : ""}`).join(", ") : attendees ?? "not specified"}
@@ -146,7 +148,7 @@ Return as JSON with keys: "openingPoints" (array of strings, max 3), "mainAgenda
     }
 
     if (type === "dashboard_insights") {
-      const text = await callClaude(systemBase,
+      const text = await callGroq(systemBase,
         `Based on the current business data, identify the top 5 most important actions the Veethrill leadership team should take TODAY. Format as JSON array of objects with: "priority" (1-5, 1=most urgent), "category" (RENT/LEASE/MAINTENANCE/CRM/FINANCE), "headline" (max 10 words), "detail" (1-2 sentences), "action" (specific next step). Sort by priority. Return ONLY valid JSON array.`
       );
       const match = text.match(/\[[\s\S]*\]/);

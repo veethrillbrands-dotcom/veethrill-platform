@@ -154,7 +154,7 @@ export default function AIPage() {
         setAiAvailable(false);
         setMessages((prev) => [...prev, {
           role: "ai",
-          text: "⚠️ AI is not yet configured. Please add your ANTHROPIC_API_KEY to the environment variables to enable real AI responses.",
+          text: "⚠️ AI is not yet configured. Please add your GROQ_API_KEY to the environment variables to enable real AI responses.",
           ts: Date.now(),
         }]);
       } else {
@@ -196,7 +196,7 @@ export default function AIPage() {
             </div>
             {!aiAvailable && (
               <div className="ml-auto bg-red-500/20 border border-red-400/30 rounded-xl px-3 py-1.5 text-[10.5px] font-bold text-red-300">
-                ⚠ ANTHROPIC_API_KEY not set
+                ⚠ GROQ_API_KEY not set
               </div>
             )}
           </div>
@@ -285,7 +285,7 @@ export default function AIPage() {
 
             {!aiAvailable ? (
               <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-[11.5px] text-yellow-800">
-                Add ANTHROPIC_API_KEY to enable live AI insights.
+                Add GROQ_API_KEY to enable live AI insights.
               </div>
             ) : loadingInsights ? (
               <div className="space-y-2">
