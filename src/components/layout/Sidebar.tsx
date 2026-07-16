@@ -64,6 +64,9 @@ const NAV = [
     { label: "Communications", href: "/dashboard/communications", icon: "MessageSquare" },
     { label: "AI Assistant", href: "/dashboard/ai", icon: "Sparkles" },
   ]},
+  { group: "Settings", items: [
+    { label: "User Management", href: "/dashboard/settings/users", icon: "Users" },
+  ]},
 ];
 
 function SidebarContent({ onNav }: { onNav?: () => void }) {
