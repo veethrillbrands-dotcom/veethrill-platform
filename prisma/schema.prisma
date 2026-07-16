@@ -17,6 +17,7 @@ enum UserRole {
   TENANT
   GUEST
   VENDOR
+  AGENT
   MAINTENANCE_STAFF
 }
 
@@ -317,6 +318,7 @@ model WorkOrder {
   propertyId      String
   unitId          String?
   vendorId        String?
+  raisedByUserId  String?
   title           String
   description     String
   category        String
@@ -330,12 +332,14 @@ model WorkOrder {
   raisedAt        DateTime          @default(now())
   assignedAt      DateTime?
   completedAt     DateTime?
+  rating          Int?
+  review          String?
   createdAt       DateTime          @default(now())
   updatedAt       DateTime          @updatedAt
 
-  property Property @relation(fields: [propertyId], references: [id])
-  unit     Unit?    @relation(fields: [unitId], references: [id])
-  vendor   Vendor?  @relation(fields: [vendorId], references: [id])
+  property   Property @relation(fields: [propertyId], references: [id])
+  unit       Unit?    @relation(fields: [unitId], references: [id])
+  vendor     Vendor?  @relation(fields: [vendorId], references: [id])
 
   @@map("work_orders")
 }
@@ -363,28 +367,29 @@ model Inspection {
 }
 
 model Invoice {
-  id            String        @id @default(cuid())
-  invoiceNumber String        @unique
-  type          InvoiceType
-  status        InvoiceStatus @default(DRAFT)
-  tenantId      String?
-  bookingId     String?
-  recipientName String
+  id             String        @id @default(cuid())
+  invoiceNumber  String        @unique
+  type           InvoiceType
+  status         InvoiceStatus @default(DRAFT)
+  tenantId       String?
+  vendorId       String?
+  bookingId      String?
+  recipientName  String
   recipientEmail String?
-  description   String
-  lineItems     Json          @default("[]")
-  subtotal      Float         @default(0)
-  taxRate       Float         @default(0)
-  total         Float         @default(0)
-  dueDate       DateTime
-  issuedAt      DateTime      @default(now())
-  approvedAt    DateTime?
-  approvedBy    String?
-  sentAt        DateTime?
-  paidAt        DateTime?
-  notes         String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  description    String
+  lineItems      Json          @default("[]")
+  subtotal       Float         @default(0)
+  taxRate        Float         @default(0)
+  total          Float         @default(0)
+  dueDate        DateTime
+  issuedAt       DateTime      @default(now())
+  approvedAt     DateTime?
+  approvedBy     String?
+  sentAt         DateTime?
+  paidAt         DateTime?
+  notes          String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   @@map("invoices")
 }
@@ -392,6 +397,7 @@ model Invoice {
 model ShortletBooking {
   id              String        @id @default(cuid())
   unitId          String
+  guestUserId     String?
   guestName       String
   guestEmail      String
   guestPhone      String
@@ -464,17 +470,18 @@ model Document {
 // ─── CRM ────────────────────────────────────────────────────────────────────
 
 model CrmContact {
-  id        String   @id @default(cuid())
-  name      String
-  type      String
-  email     String?
-  phone     String?
-  company   String?
-  location  String?
-  source    String?
-  notes     String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id              String   @id @default(cuid())
+  name            String
+  type            String
+  email           String?
+  phone           String?
+  company         String?
+  location        String?
+  source          String?
+  notes           String?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   deals CrmDeal[]
 
@@ -501,6 +508,7 @@ model CrmDeal {
 
 model CrmCommission {
   id               String    @id @default(cuid())
+  agentUserId      String?
   agent            String
   property         String
   dealValue        Float     @default(0)
