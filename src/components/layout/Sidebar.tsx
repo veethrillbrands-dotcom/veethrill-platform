@@ -8,9 +8,11 @@ import {
   LayoutDashboard, BarChart2, Building2, Home, Users, UserCheck,
   Briefcase, Wrench, FileText, CalendarDays, CreditCard, Cog,
   Search, BookOpen, TrendingUp, FolderOpen, MessageSquare, Sparkles,
-  Settings, FileCheck, UserCircle2, GitMerge, CheckSquare, Award, BookMarked,
+  FileCheck, UserCircle2, GitMerge, CheckSquare, Award, BookMarked,
   ClipboardList, CalendarCheck, X, Menu,
 } from "lucide-react";
+import { useUser, useClerk } from "@clerk/nextjs";
+import { LogOut, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const ICON_MAP: Record<string, React.ElementType> = {
@@ -71,7 +73,13 @@ const NAV = [
 
 function SidebarContent({ onNav }: { onNav?: () => void }) {
   const pathname = usePathname();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const isActive = (href: string) => href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || user?.primaryEmailAddress?.emailAddress || "Admin";
+  const initials = [user?.firstName?.[0], user?.lastName?.[0]].filter(Boolean).join("").toUpperCase() || "A";
+  const role = (user?.publicMetadata?.role as string | undefined)?.replace(/_/g, " ") ?? "Admin";
 
   return (
     <aside className="w-full flex flex-col overflow-y-auto h-full" style={{ background: "var(--navy)" }}>
@@ -116,18 +124,23 @@ function SidebarContent({ onNav }: { onNav?: () => void }) {
       </nav>
 
       {/* User */}
-      <div className="p-3 border-t border-white/10">
-        <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 cursor-pointer hover:bg-white/8 transition-colors">
+      <div className="p-3 border-t border-white/10 space-y-1">
+        <Link href="/dashboard/settings/users" onClick={onNav}
+          className="flex items-center gap-2.5 p-2.5 rounded-xl bg-white/5 hover:bg-white/10 transition-colors cursor-pointer">
           <div className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-[11px] flex-shrink-0"
             style={{ background: "linear-gradient(135deg, var(--gold), #b8960a)", color: "var(--navy)" }}>
-            AO
+            {initials}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-white font-semibold text-[11.5px] truncate">Amara Okonkwo</div>
-            <div className="text-white/40 text-[10px]">Super Admin</div>
+            <div className="text-white font-semibold text-[11.5px] truncate">{fullName}</div>
+            <div className="text-white/40 text-[10px] capitalize">{role.toLowerCase()}</div>
           </div>
-          <Settings size={13} className="text-white/30 flex-shrink-0" />
-        </div>
+          <Settings size={12} className="text-white/30 flex-shrink-0" />
+        </Link>
+        <button onClick={() => signOut({ redirectUrl: "/sign-in" })}
+          className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12px] text-white/50 hover:text-white hover:bg-white/8 transition-colors">
+          <LogOut size={13} /> Sign out
+        </button>
       </div>
     </aside>
   );
