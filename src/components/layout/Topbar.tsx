@@ -1,18 +1,26 @@
 "use client";
 
-import { Bell, Search, Plus } from "lucide-react";
+import { Bell, Search, Plus, ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { MobileMenuButton } from "./Sidebar";
 
 interface TopbarProps {
   title: string;
   action?: { label: string; onClick?: () => void };
+  backHref?: string;
 }
 
-export function Topbar({ title, action }: TopbarProps) {
+export function Topbar({ title, action, backHref }: TopbarProps) {
   return (
     <header className="h-14 min-h-14 bg-white border-b border-gray-100 flex items-center px-4 gap-3 shadow-sm z-10">
       {/* Hamburger — mobile only */}
-      <MobileMenuButton />
+      {!backHref && <MobileMenuButton />}
+
+      {backHref && (
+        <Link href={backHref} className="w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-gray-100 transition-colors flex-shrink-0">
+          <ArrowLeft size={15} className="text-gray-600" />
+        </Link>
+      )}
 
       <h1 className="text-sm sm:text-base font-bold text-gray-900 flex-1 truncate">{title}</h1>
 

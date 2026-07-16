@@ -1,193 +1,326 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Topbar } from "@/components/layout/Topbar";
-import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
-import { Sparkles, TrendingUp, Wrench, FileText, Home, Send, Bot } from "lucide-react";
+import {
+  Sparkles, Send, Bot, User, Copy, CheckCheck,
+  Home, Wrench, TrendingUp, FileText, Users, MessageCircle,
+  CalendarDays, AlertTriangle, RefreshCw, Lightbulb,
+} from "lucide-react";
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Message = { role: "ai" | "user"; text: string; ts: number };
+type Insight = { priority: number; category: string; headline: string; detail: string; action: string };
+
+// ─── Suggestion chips ─────────────────────────────────────────────────────────
+
+const QUICK_PROMPTS = [
+  { icon: AlertTriangle, label: "Overdue rent summary",      text: "Give me a summary of all overdue rent payments and recommend next steps for each." },
+  { icon: Home,          label: "Vacancy risk analysis",     text: "Which properties or units have the highest vacancy risk and what should I do?" },
+  { icon: Wrench,        label: "Maintenance priorities",    text: "What maintenance should I prioritise this week and what's the estimated cost impact?" },
+  { icon: TrendingUp,    label: "Revenue forecast",          text: "Forecast revenue for the next 30 days based on current data." },
+  { icon: FileText,      label: "Lease renewals",            text: "Which leases are expiring soon? Draft renewal outreach messages for each tenant." },
+  { icon: Users,         label: "CRM next steps",            text: "Which CRM deals need attention? What are the recommended next actions for each?" },
+  { icon: MessageCircle, label: "Draft tenant message",      text: "Draft a WhatsApp message to remind a tenant about overdue rent — warm but firm." },
+  { icon: CalendarDays,  label: "Meeting agenda",            text: "Help me prepare a meeting agenda for a property owner discussion about portfolio performance." },
+];
 
 const AI_MODULES = [
-  { icon: Home, label: "✦ AI Leasing", title: "Smart Leasing Assistant", sub: "Vacancy prediction, pricing optimisation, applicant scoring", color: "var(--gold)", insights: ["📊 Unit 8C, Lekki — repricing to ₦165k reduces vacancy by 34 days", "⭐ Top applicant for Unit 2A: 98% creditworthiness score", "🏠 3 units approaching 60-day vacancy threshold — action required"] },
-  { icon: Wrench, label: "✦ AI Maintenance", title: "Predictive Maintenance Engine", sub: "Failure forecasting, vendor matching, priority triage", color: "var(--emerald)", insights: ["🔧 PH generator: 94% failure probability within 45 days", "💰 Proactive service saves ₦340,000 vs emergency repair cost", "📋 Veethrill Towers AC units due for annual filter replacement"] },
-  { icon: TrendingUp, label: "✦ AI Finance", title: "Revenue & Risk Forecasting", sub: "Cash flow prediction, delinquency risk scoring", color: "#8B5CF6", insights: ["📈 August forecast: ₦51.4M (+6.6% MoM) — confidence 87%", "⚠️ 2 tenants flagged high-risk for non-payment next cycle", "💡 Auto-reminders could improve collection rate by 4.2%"] },
-  { icon: FileText, label: "✦ AI Documents", title: "Smart Contract Intelligence", sub: "Lease extraction, clause analysis, compliance flagging", color: "#3B82F6", insights: ["📄 5 leases missing force majeure clause — auto-fix available", "🔍 Deposit terms inconsistent across 3 units — review suggested", "✅ All active leases comply with Lagos State tenancy law"] },
+  { icon: Home,       label: "AI Leasing",     color: "var(--gold)",    desc: "Vacancy prediction, pricing optimisation, applicant scoring" },
+  { icon: Wrench,     label: "AI Maintenance", color: "var(--emerald)", desc: "Failure forecasting, vendor matching, priority triage" },
+  { icon: TrendingUp, label: "AI Finance",     color: "#8B5CF6",        desc: "Cash flow prediction, delinquency risk scoring" },
+  { icon: FileText,   label: "AI Contracts",   color: "#3B82F6",        desc: "Lease extraction, clause analysis, compliance flagging" },
 ];
 
-const INITIAL_MESSAGES = [
-  { role: "ai" as const, text: "Hello! I'm your Veethrill AI assistant. I can analyse your portfolio, predict vacancies, review leases, flag maintenance risks, and generate reports. What would you like to know today?" },
-];
+// ─── Message bubble ───────────────────────────────────────────────────────────
 
-const SUGGESTIONS = [
-  "Which property has the highest vacancy risk?",
-  "Show me overdue rent summary",
-  "What maintenance should I prioritise?",
-  "Forecast revenue for next month",
-  "Which tenants are likely to renew?",
-  "Analyse my expense breakdown",
-];
+function MessageBubble({ msg }: { msg: Message }) {
+  const [copied, setCopied] = useState(false);
+  const isAI = msg.role === "ai";
 
-const AI_RESPONSES: Record<string, string> = {
-  "vacancy": "Based on current data, **Lekki Gardens Phase 3** has the highest vacancy risk — Block C-3 has been vacant for 18 days and no applications are in pipeline. I recommend repricing from ₦380k to ₦355k and promoting on PropertyPro. Also monitor **Ikoyi Residences Villa B** (vacant, premium pricing may need review).",
-  "overdue": "You have **2 overdue rent payments** totalling ₦1,060,000:\n\n• Emeka Bello — Unit 5B, Veethrill Towers — ₦260,000 (45 days overdue)\n• Tunde Fashola — PH1, Abuja Heights — ₦800,000 (14 days overdue)\n\nI recommend sending an SMS reminder to Tunde immediately and initiating the formal notice process for Emeka.",
-  "maintenance": "Priority maintenance actions this week:\n\n🔴 **URGENT**: AC failure Unit 4B (Veethrill Towers) — tenant comfort affected, SLA at risk\n🟠 **HIGH**: Smart TV Suite 2B (Shortlet) — guest experience impacted, book technician today\n🟡 **HIGH**: Pool pump Villa A (Ikoyi) — estimated ₦280k repair, get 3 quotes\n\nTotal estimated maintenance spend: ₦745,000",
-  "revenue": "**August 2026 Revenue Forecast**\n\nProjected: ₦51.4M (+6.6% vs July)\nConfidence: 87%\n\nKey drivers:\n• 2 new lease activations expected\n• Shortlet season peak (Lagos August demand)\n• Overdue collections from Emeka + Tunde\n\nRisk factors: Tunde non-payment (-₦800k), Block C-3 continued vacancy (-₦380k)",
-  "renew": "Lease renewal analysis for active tenants:\n\n🟢 **High probability (>80%)**: Ngozi Adeyemi (GTBank), Fatima Abubakar (FBN) — stable employment, no complaints\n🟡 **Medium (50-80%)**: Chidi Okafor — good payment history but lease expires Jul 31, no response yet\n🔴 **Low (<50%)**: Emeka Bello — payment issues, consider proactive outreach",
-  "expense": "**July 2026 Expense Analysis**\n\nTotal: ₦1,160,000\n• Maintenance: ₦345k (30%) — above target\n• Payroll: ₦420k (36%) — on target\n• Insurance: ₦350k (30%) — annual premium\n• Technology: ₦45k (4%) — platform subscriptions\n\n💡 Maintenance is running 18% over budget. Consider a preventive maintenance contract with a single vendor to reduce emergency call-out costs.",
-};
+  function copy() {
+    navigator.clipboard.writeText(msg.text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
 
-function getAIResponse(input: string): string {
-  const lower = input.toLowerCase();
-  if (lower.includes("vacanc")) return AI_RESPONSES["vacancy"];
-  if (lower.includes("overdue") || lower.includes("rent")) return AI_RESPONSES["overdue"];
-  if (lower.includes("maintenanc") || lower.includes("priorit")) return AI_RESPONSES["maintenance"];
-  if (lower.includes("revenue") || lower.includes("forecast") || lower.includes("next month")) return AI_RESPONSES["revenue"];
-  if (lower.includes("renew")) return AI_RESPONSES["renew"];
-  if (lower.includes("expense") || lower.includes("breakdown") || lower.includes("cost")) return AI_RESPONSES["expense"];
-  return "I've analysed your portfolio data. Could you be more specific? You can ask about vacancies, overdue rent, maintenance priorities, revenue forecasts, lease renewals, or expense breakdowns.";
+  // Convert **bold** markdown and newlines
+  function format(text: string) {
+    return text
+      .split("\n")
+      .map((line, i) => {
+        const parts = line.split(/(\*\*[^*]+\*\*)/g);
+        return (
+          <span key={i}>
+            {parts.map((part, j) =>
+              part.startsWith("**") && part.endsWith("**")
+                ? <strong key={j}>{part.slice(2, -2)}</strong>
+                : part
+            )}
+            {i < text.split("\n").length - 1 && <br />}
+          </span>
+        );
+      });
+  }
+
+  return (
+    <div className={`flex gap-3 ${isAI ? "" : "flex-row-reverse"}`}>
+      {/* Avatar */}
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${isAI ? "text-white" : "bg-gray-100"}`}
+        style={isAI ? { background: "linear-gradient(135deg, var(--navy), var(--navy-mid))" } : {}}>
+        {isAI ? <Bot size={15} className="text-white" /> : <User size={15} className="text-gray-600" />}
+      </div>
+
+      <div className={`max-w-[80%] ${isAI ? "" : ""}`}>
+        <div className={`rounded-2xl px-4 py-3 text-[13.5px] leading-relaxed ${isAI
+          ? "bg-white border border-gray-100 shadow-sm text-gray-800"
+          : "text-white"}`}
+          style={!isAI ? { background: "var(--navy)" } : {}}>
+          {format(msg.text)}
+        </div>
+        {isAI && (
+          <div className="flex items-center gap-2 mt-1.5 px-1">
+            <span className="text-[10.5px] text-gray-400">
+              {new Date(msg.ts).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+            </span>
+            <button onClick={copy} className="flex items-center gap-1 text-[10.5px] text-gray-400 hover:text-gray-600 transition-colors">
+              {copied ? <CheckCheck size={11} className="text-emerald-500" /> : <Copy size={11} />}
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
-type Message = { role: "ai" | "user"; text: string };
+// ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AIPage() {
-  const [messages, setMessages] = useState<Message[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<Message[]>([
+    {
+      role: "ai",
+      text: "Hello! I'm your Veethrill AI assistant, powered by Claude.\n\nI have real-time access to your portfolio data — properties, tenants, leases, payments, maintenance, CRM deals, tasks, and more. Ask me anything about your business or request specific drafts (messages, agendas, reports).\n\nWhat would you like to work on today?",
+      ts: Date.now(),
+    },
+  ]);
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
+  const [insights, setInsights] = useState<Insight[]>([]);
+  const [loadingInsights, setLoadingInsights] = useState(false);
+  const [aiAvailable, setAiAvailable] = useState(true);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  function send(text?: string) {
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, thinking]);
+
+  const loadInsights = useCallback(async () => {
+    setLoadingInsights(true);
+    try {
+      const res = await fetch("/api/ai/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "dashboard_insights" }),
+      });
+      const data = await res.json();
+      if (data.error?.includes("not configured")) setAiAvailable(false);
+      setInsights(data.insights ?? []);
+    } catch { /* ignore */ }
+    setLoadingInsights(false);
+  }, []);
+
+  useEffect(() => { loadInsights(); }, [loadInsights]);
+
+  async function send(text?: string) {
     const msg = text ?? input;
-    if (!msg.trim()) return;
+    if (!msg.trim() || thinking) return;
     setInput("");
-    setMessages((m) => [...m, { role: "user" as const, text: msg }]);
+
+    const userMsg: Message = { role: "user", text: msg, ts: Date.now() };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setThinking(true);
-    setTimeout(() => {
-      setMessages((m) => [...m, { role: "ai" as const, text: getAIResponse(msg) }]);
-      setThinking(false);
-    }, 1200);
+
+    try {
+      const res = await fetch("/api/ai/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messages: newMessages.map((m) => ({ role: m.role, text: m.text })) }),
+      });
+      const data = await res.json();
+      if (data.error?.includes("not configured")) {
+        setAiAvailable(false);
+        setMessages((prev) => [...prev, {
+          role: "ai",
+          text: "⚠️ AI is not yet configured. Please add your ANTHROPIC_API_KEY to the environment variables to enable real AI responses.",
+          ts: Date.now(),
+        }]);
+      } else {
+        setMessages((prev) => [...prev, { role: "ai", text: data.text ?? "I could not generate a response.", ts: Date.now() }]);
+      }
+    } catch {
+      setMessages((prev) => [...prev, { role: "ai", text: "Network error. Please try again.", ts: Date.now() }]);
+    }
+    setThinking(false);
   }
+
+  const SEVERITY_CLASS: Record<string, string> = {
+    "RENT": "bg-red-50 border-red-200 text-red-700",
+    "LEASE": "bg-orange-50 border-orange-200 text-orange-700",
+    "MAINTENANCE": "bg-yellow-50 border-yellow-200 text-yellow-700",
+    "FINANCE": "bg-purple-50 border-purple-200 text-purple-700",
+    "CRM": "bg-blue-50 border-blue-200 text-blue-700",
+    "INSPECTION": "bg-teal-50 border-teal-200 text-teal-700",
+    "DEAL": "bg-indigo-50 border-indigo-200 text-indigo-700",
+    "TASK": "bg-gray-50 border-gray-200 text-gray-600",
+  };
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar title="AI Intelligence" />
-      <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
-        {/* Hero */}
-        <div className="rounded-2xl p-6 relative overflow-hidden" style={{ background: "linear-gradient(135deg, var(--navy) 0%, #1a3555 100%)" }}>
-          <div className="absolute top-0 right-0 w-48 h-48 rounded-full opacity-10" style={{ background: "var(--gold)", transform: "translate(30%, -30%)" }} />
-          <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full opacity-5" style={{ background: "var(--emerald)", transform: "translate(-30%, 30%)" }} />
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={16} style={{ color: "var(--gold)" }} />
-              <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: "var(--gold)" }}>Veethrill Intelligence · Powered by Claude AI</span>
+      <div className="flex-1 overflow-hidden flex gap-0">
+
+        {/* ── Left: Chat ─────────────────────────────────────────── */}
+        <div className="flex flex-col flex-1 min-w-0 overflow-hidden border-r border-gray-100">
+          {/* Hero strip */}
+          <div className="px-5 py-4 flex items-center gap-3 flex-shrink-0" style={{ background: "linear-gradient(135deg, var(--navy), #1a3555)" }}>
+            <div className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0" style={{ background: "var(--gold)" }}>
+              <Sparkles size={18} style={{ color: "var(--navy)" }} />
             </div>
-            <h2 className="text-[22px] font-black text-white mb-2">AI-Powered Property Management</h2>
-            <p className="text-[13px] text-white/60 max-w-lg">Real-time insights, predictive analytics, and intelligent automation across your entire portfolio.</p>
-            <div className="grid grid-cols-4 gap-3 mt-5">
-              {[
-                { v: "87%", l: "Forecast Accuracy" },
-                { v: "₦340k", l: "Savings Identified" },
-                { v: "4.2%", l: "Collection Uplift" },
-                { v: "34 days", l: "Leasing Time Saved" },
-              ].map((s) => (
-                <div key={s.l} className="bg-white/10 rounded-xl p-3 text-center">
-                  <div className="text-[18px] font-black" style={{ color: "var(--gold)" }}>{s.v}</div>
-                  <div className="text-[10px] text-white/60 mt-0.5">{s.l}</div>
+            <div>
+              <div className="text-[13px] font-black text-white">Veethrill Intelligence</div>
+              <div className="text-[10.5px] text-white/50">Powered by Claude AI · Live portfolio context</div>
+            </div>
+            {!aiAvailable && (
+              <div className="ml-auto bg-red-500/20 border border-red-400/30 rounded-xl px-3 py-1.5 text-[10.5px] font-bold text-red-300">
+                ⚠ ANTHROPIC_API_KEY not set
+              </div>
+            )}
+          </div>
+
+          {/* Quick prompts */}
+          <div className="px-4 py-3 border-b border-gray-100 flex gap-2 overflow-x-auto flex-shrink-0">
+            {QUICK_PROMPTS.map(({ icon: Icon, label, text }) => (
+              <button key={label} onClick={() => send(text)}
+                className="flex-shrink-0 flex items-center gap-1.5 text-[11.5px] font-semibold px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-yellow-50 hover:text-yellow-800 border border-gray-200 hover:border-yellow-300 text-gray-600 transition-all">
+                <Icon size={11} /> {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+            {messages.map((msg, i) => <MessageBubble key={i} msg={msg} />)}
+            {thinking && (
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-xl flex items-center justify-center text-white flex-shrink-0" style={{ background: "var(--navy)" }}>
+                  <Bot size={15} />
+                </div>
+                <div className="bg-white border border-gray-100 rounded-2xl px-4 py-3 shadow-sm">
+                  <div className="flex items-center gap-1.5">
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className="w-2 h-2 rounded-full animate-bounce" style={{ background: "var(--navy)", animationDelay: `${i * 0.15}s` }} />
+                    ))}
+                    <span className="text-[11.5px] text-gray-400 ml-1">Analysing your portfolio…</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {/* Input */}
+          <div className="p-4 border-t border-gray-100 flex-shrink-0">
+            <div className="flex gap-2">
+              <textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); } }}
+                placeholder="Ask anything about your portfolio, tenants, deals, or request drafts…"
+                rows={2}
+                className="flex-1 border border-gray-200 rounded-2xl px-4 py-3 text-[13px] outline-none resize-none focus:border-yellow-400 transition-colors"
+              />
+              <button onClick={() => send()} disabled={!input.trim() || thinking}
+                className="w-12 rounded-2xl flex items-center justify-center text-white disabled:opacity-40 transition-opacity flex-shrink-0"
+                style={{ background: "var(--navy)" }}>
+                <Send size={16} />
+              </button>
+            </div>
+            <div className="text-[10.5px] text-gray-400 mt-1.5 text-center">Shift+Enter for new line · Enter to send</div>
+          </div>
+        </div>
+
+        {/* ── Right: Insights panel ────────────────────────────── */}
+        <div className="w-72 flex-shrink-0 overflow-y-auto p-4 space-y-4 bg-gray-50/50">
+          {/* AI Modules */}
+          <div>
+            <div className="text-[10.5px] font-bold uppercase tracking-widest text-gray-400 mb-2">AI Capabilities</div>
+            <div className="space-y-2">
+              {AI_MODULES.map(({ icon: Icon, label, color, desc }) => (
+                <div key={label} className="bg-white rounded-xl border border-gray-100 p-3 flex items-start gap-2.5">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: `${color}18` }}>
+                    <Icon size={13} style={{ color }} />
+                  </div>
+                  <div>
+                    <div className="text-[11.5px] font-bold text-gray-900">{label}</div>
+                    <div className="text-[10.5px] text-gray-400 mt-0.5">{desc}</div>
+                  </div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
 
-        {/* AI Modules */}
-        <div className="grid grid-cols-2 gap-4">
-          {AI_MODULES.map((mod) => {
-            const Icon = mod.icon;
-            return (
-              <div key={mod.title} className="rounded-2xl p-5 relative overflow-hidden" style={{ background: "linear-gradient(135deg, var(--navy) 0%, #1a3555 100%)" }}>
-                <div className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10" style={{ background: mod.color, transform: "translate(30%, -30%)" }} />
-                <div className="flex items-center gap-2 mb-1">
-                  <Icon size={13} style={{ color: mod.color }} />
-                  <span className="text-[10px] font-bold uppercase tracking-widest" style={{ color: mod.color }}>{mod.label}</span>
-                </div>
-                <h3 className="text-[15px] font-bold text-white mb-1">{mod.title}</h3>
-                <p className="text-[11.5px] text-white/60 mb-4">{mod.sub}</p>
-                <div className="space-y-2">
-                  {mod.insights.map((insight, i) => (
-                    <div key={i} className="flex items-start gap-2 bg-white/7 rounded-xl px-3 py-2 text-[11.5px] text-white/85">{insight}</div>
-                  ))}
-                </div>
-                <button onClick={() => send(`Tell me more about ${mod.title.toLowerCase()}`)}
-                  className="mt-4 text-[11.5px] font-semibold px-3 py-1.5 rounded-lg"
-                  style={{ background: mod.color, color: "var(--navy)" }}>
-                  Ask AI →
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* AI Chat */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "var(--navy)" }}>
-                <Bot size={14} style={{ color: "var(--gold)" }} />
-              </div>
-              <CardTitle sub="Powered by Claude AI · Knows your portfolio">Veethrill AI Chat</CardTitle>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span className="text-[11px] font-semibold text-emerald-600">Online</span>
-            </div>
-          </CardHeader>
-          <CardBody>
-            <div className="bg-gray-50 rounded-xl p-4 mb-3 space-y-3 h-64 overflow-y-auto">
-              {messages.map((m, i) => (
-                <div key={i} className={`flex items-start gap-2.5 ${m.role === "user" ? "flex-row-reverse" : ""}`}>
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[10px] font-bold flex-shrink-0 ${m.role === "ai" ? "" : "rounded-full bg-yellow-100 text-yellow-700"}`}
-                    style={m.role === "ai" ? { background: "var(--navy)" } : {}}>
-                    {m.role === "ai" ? <Sparkles size={12} style={{ color: "var(--gold)" }} /> : "AO"}
-                  </div>
-                  <div className={`rounded-xl px-3 py-2 text-[12.5px] max-w-[80%] shadow-sm whitespace-pre-line ${m.role === "ai" ? "bg-white border border-gray-100 text-gray-800" : "text-white"}`}
-                    style={m.role === "user" ? { background: "var(--navy)" } : {}}
-                    dangerouslySetInnerHTML={{ __html: m.text.replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>") }} />
-                </div>
-              ))}
-              {thinking && (
-                <div className="flex items-start gap-2.5">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "var(--navy)" }}>
-                    <Sparkles size={12} style={{ color: "var(--gold)" }} />
-                  </div>
-                  <div className="bg-white rounded-xl px-4 py-3 border border-gray-100 flex items-center gap-1.5">
-                    {[0, 1, 2].map((i) => (
-                      <span key={i} className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Suggestions */}
-            <div className="flex gap-2 mb-3 flex-wrap">
-              {SUGGESTIONS.map((s) => (
-                <button key={s} onClick={() => send(s)}
-                  className="text-[11px] font-medium px-3 py-1.5 rounded-full bg-gray-100 text-gray-600 hover:bg-yellow-100 hover:text-yellow-700 transition-colors">
-                  {s}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex gap-2">
-              <input value={input} onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && send()}
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-2.5 text-[12.5px] outline-none focus:border-yellow-400"
-                placeholder="Ask about occupancy, revenue, maintenance, leases…" />
-              <button onClick={() => send()} className="px-4 py-2.5 rounded-xl text-[12.5px] font-bold flex items-center gap-1.5"
-                style={{ background: "var(--gold)", color: "var(--navy)" }}>
-                <Send size={13} /> Send
+          {/* Live Business Insights */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="text-[10.5px] font-bold uppercase tracking-widest text-gray-400">Priority Actions</div>
+              <button onClick={loadInsights} disabled={loadingInsights}
+                className="text-gray-400 hover:text-gray-600 transition-colors">
+                <RefreshCw size={12} className={loadingInsights ? "animate-spin" : ""} />
               </button>
             </div>
-          </CardBody>
-        </Card>
 
+            {!aiAvailable ? (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-[11.5px] text-yellow-800">
+                Add ANTHROPIC_API_KEY to enable live AI insights.
+              </div>
+            ) : loadingInsights ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white rounded-xl border border-gray-100 p-3 animate-pulse">
+                    <div className="h-3 bg-gray-100 rounded w-3/4 mb-2" />
+                    <div className="h-2 bg-gray-100 rounded w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : insights.length === 0 ? (
+              <div className="bg-white rounded-xl border border-gray-100 p-4 text-center text-[11.5px] text-gray-400">
+                <Lightbulb size={20} className="mx-auto mb-2 text-gray-300" />
+                No critical actions found — things look good!
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {insights.map((ins, i) => (
+                  <div key={i} className={`bg-white rounded-xl border p-3 ${SEVERITY_CLASS[ins.category] ?? "bg-gray-50 border-gray-200 text-gray-600"}`}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-[9px] font-black">{ins.category}</span>
+                      <span className="text-[9px] font-bold opacity-60">#{ins.priority}</span>
+                    </div>
+                    <div className="text-[12px] font-bold mb-0.5">{ins.headline}</div>
+                    <div className="text-[10.5px] opacity-80 mb-1.5">{ins.detail}</div>
+                    <button onClick={() => send(`Give me specific details and a step-by-step action plan for: ${ins.headline}`)}
+                      className="text-[10px] font-bold underline underline-offset-2 opacity-70 hover:opacity-100">
+                      → {ins.action}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

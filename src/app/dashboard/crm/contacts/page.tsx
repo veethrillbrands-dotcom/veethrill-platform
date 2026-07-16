@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { Topbar } from "@/components/layout/Topbar";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Users, UserCheck, Building2, Globe, Trash2, MessageCircle, Phone, Mail } from "lucide-react";
+import { X, Users, UserCheck, Building2, Globe, Trash2, MessageCircle, Phone, Mail, ChevronRight, Upload } from "lucide-react";
+import { BulkUploadModal } from "@/components/modals/BulkUploadModal";
 import { getInitials } from "@/lib/utils";
 
 type Contact = {
@@ -96,6 +98,7 @@ export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -138,7 +141,7 @@ export default function ContactsPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="CRM Contacts" action={{ label: "Add Contact", onClick: () => setAdding(true) }} />
+      <Topbar title="CRM Contacts" action={{ label: "+ Add Contact", onClick: () => setAdding(true) }} />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -161,6 +164,10 @@ export default function ContactsPage() {
         <div className="flex items-center gap-3">
           <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search contacts…"
             className="border border-gray-200 rounded-xl px-4 py-2.5 text-[13px] outline-none focus:border-yellow-400 w-64" />
+          <button onClick={() => setImporting(true)}
+            className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl border border-gray-200 text-[12.5px] font-bold text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all flex-shrink-0">
+            <Upload size={13} /> Import CSV
+          </button>
           <div className="flex gap-1.5 flex-wrap">
             {["All", ...TYPES].map((t) => (
               <button key={t} onClick={() => setFilter(t)}
@@ -208,16 +215,16 @@ export default function ContactsPage() {
                         <input type="checkbox" checked={selected.has(c.id)} onChange={() => toggleSelect(c.id)} className="w-3.5 h-3.5 rounded accent-yellow-500" />
                       </td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center gap-2.5">
+                        <Link href={`/dashboard/crm/contacts/${c.id}`} className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
                           <div className="w-9 h-9 rounded-full flex items-center justify-center text-[11px] font-black flex-shrink-0"
                             style={{ background: "linear-gradient(135deg, var(--gold), #b8960a)", color: "var(--navy)" }}>
                             {getInitials(c.name)}
                           </div>
                           <div>
-                            <div className="text-[13px] font-semibold text-gray-900">{c.name}</div>
+                            <div className="text-[13px] font-semibold text-gray-900 hover:underline">{c.name}</div>
                             <div className="text-[11px] text-gray-400">{c.email ?? "—"}</div>
                           </div>
-                        </div>
+                        </Link>
                       </td>
                       <td className="px-4 py-3">
                         <span className={`text-[10.5px] font-bold px-2 py-0.5 rounded-full ${TYPE_COLORS[c.type] ?? "bg-gray-100 text-gray-600"}`}>{c.type}</span>
@@ -229,6 +236,10 @@ export default function ContactsPage() {
                       <td className="px-4 py-3 text-[12px] text-gray-500 max-w-[200px] truncate">{c.notes ?? "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Link href={`/dashboard/crm/contacts/${c.id}`}
+                            className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-colors" title="View profile">
+                            <ChevronRight size={12} className="text-gray-500" />
+                          </Link>
                           {c.phone && (
                             <a href={`tel:${c.phone}`}
                               className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors" title={`Call ${c.name}`}>
@@ -264,6 +275,13 @@ export default function ContactsPage() {
 
       </div>
       {adding && <AddContactModal onClose={() => setAdding(false)} onCreated={load} />}
+      {importing && (
+        <BulkUploadModal
+          defaultEntity="contacts"
+          onClose={() => setImporting(false)}
+          onImported={() => { load(); setImporting(false); }}
+        />
+      )}
     </div>
   );
 }

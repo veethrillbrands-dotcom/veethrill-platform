@@ -42,8 +42,13 @@ const NAV_BY_PORTAL: Record<string, NavItem[]> = {
   ],
   staff: [
     { label: "Overview", href: "/portal/staff", icon: Home },
+    { label: "My Contacts", href: "/portal/staff/contacts", icon: User },
+    { label: "Properties", href: "/portal/staff/properties", icon: Home },
+    { label: "Tenants", href: "/portal/staff/tenants", icon: User },
+    { label: "Agents / Team", href: "/portal/staff/agents", icon: Star },
     { label: "Work Orders", href: "/portal/staff/work-orders", icon: Wrench },
     { label: "Inspections", href: "/portal/staff/inspections", icon: Star },
+    { label: "Invoices", href: "/portal/staff/invoices", icon: FileText },
   ],
 };
 

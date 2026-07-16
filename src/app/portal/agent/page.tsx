@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { PortalTopbar } from "@/components/portal/PortalTopbar";
 import { formatCurrency } from "@/lib/utils";
-import { Users, TrendingUp, CreditCard, MessageCircle, Phone, Mail } from "lucide-react";
+import { Users, TrendingUp, CreditCard, MessageCircle, Phone, Mail, CheckCircle2, Circle, Clock, AlertTriangle } from "lucide-react";
 
 export default async function AgentPortalPage() {
   const { userId } = await auth();
@@ -13,7 +13,7 @@ export default async function AgentPortalPage() {
   if (!user) redirect("/sign-in");
 
   // Agent only sees contacts they created
-  const [contacts, deals, commissions, trainings] = await Promise.all([
+  const [contacts, deals, commissions, trainings, tasks] = await Promise.all([
     db.crmContact.findMany({
       where: { createdByUserId: user.id },
       orderBy: { createdAt: "desc" },
@@ -27,6 +27,12 @@ export default async function AgentPortalPage() {
       orderBy: { createdAt: "desc" },
     }),
     db.crmTrainingProgram.findMany({ orderBy: { startDate: "asc" }, take: 5 }),
+    db.crmTask.findMany({
+      where: { assignedToUserId: user.id, status: { not: "CANCELLED" } },
+      include: { contact: { select: { id: true, name: true } } },
+      orderBy: [{ dueAt: "asc" }, { priority: "asc" }],
+      take: 15,
+    }),
   ]);
 
   const totalCommission = commissions.filter((c) => c.status === "Paid").reduce((s, c) => s + c.commissionAmount, 0);
@@ -137,6 +143,69 @@ export default async function AgentPortalPage() {
             </table>
           </div>
         </div>
+
+        {/* My Tasks */}
+        {(() => {
+          const now = new Date();
+          const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+          const overdueTasks = tasks.filter((t) => t.status !== "COMPLETED" && t.dueAt && new Date(t.dueAt) < now);
+          const todayTasks = tasks.filter((t) => t.status !== "COMPLETED" && t.dueAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= todayEnd);
+          const PRIORITY_COLOR: Record<string, string> = { URGENT: "text-red-600 bg-red-50", HIGH: "text-orange-600 bg-orange-50", MEDIUM: "text-blue-600 bg-blue-50", LOW: "text-gray-500 bg-gray-50" };
+          return (
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+                <div className="font-bold text-gray-900 text-[14px]">My Tasks & Reminders ({tasks.filter((t) => t.status !== "COMPLETED").length} pending)</div>
+                <div className="flex items-center gap-2">
+                  {overdueTasks.length > 0 && (
+                    <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-red-100 text-red-700">
+                      <AlertTriangle size={10} /> {overdueTasks.length} overdue
+                    </span>
+                  )}
+                  {todayTasks.length > 0 && (
+                    <span className="flex items-center gap-1 text-[11px] font-bold px-2 py-1 rounded-full bg-orange-100 text-orange-700">
+                      <Clock size={10} /> {todayTasks.length} due today
+                    </span>
+                  )}
+                </div>
+              </div>
+              {tasks.length === 0 ? (
+                <div className="text-center py-10 text-gray-400 text-[13px]">No tasks assigned. Create tasks from the CRM.</div>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {tasks.map((t) => {
+                    const isDone = t.status === "COMPLETED";
+                    const isOverdue = !isDone && t.dueAt && new Date(t.dueAt) < now;
+                    const isDueToday = !isDone && t.dueAt && new Date(t.dueAt) >= now && new Date(t.dueAt) <= todayEnd;
+                    return (
+                      <div key={t.id} className={`px-5 py-3 flex items-center gap-3 ${isOverdue ? "bg-red-50/30" : ""}`}>
+                        <div className={isDone ? "text-emerald-500" : "text-gray-300"}>
+                          {isDone ? <CheckCircle2 size={16} /> : <Circle size={16} />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-[13px] font-semibold ${isDone ? "line-through text-gray-400" : "text-gray-900"}`}>{t.title}</div>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${PRIORITY_COLOR[t.priority] ?? "bg-gray-50 text-gray-500"}`}>{t.priority}</span>
+                            {t.contact && <span className="text-[11px] text-blue-600">{t.contact.name}</span>}
+                            {t.dueAt && (
+                              <span className={`flex items-center gap-1 text-[10.5px] ${isOverdue ? "text-red-600 font-bold" : isDueToday ? "text-orange-600 font-semibold" : "text-gray-400"}`}>
+                                <Clock size={9} />
+                                {new Date(t.dueAt).toLocaleDateString("en-GB", { day: "2-digit", month: "short" })}
+                                {" "}
+                                {new Date(t.dueAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+                                {isOverdue && " · OVERDUE"}
+                                {isDueToday && " · TODAY"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Upcoming Training */}
         {trainings.length > 0 && (

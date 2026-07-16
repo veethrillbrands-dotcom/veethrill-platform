@@ -5,11 +5,11 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/webhooks(.*)",
+  "/api/(.*)",
 ]);
 
 const ADMIN_ROLES = ["SUPER_ADMIN", "COMPANY_ADMIN", "PROPERTY_MANAGER"];
 
-// Maps each role to its home portal path
 const ROLE_HOME: Record<string, string> = {
   SUPER_ADMIN: "/dashboard",
   COMPANY_ADMIN: "/dashboard",
@@ -25,14 +25,25 @@ const ROLE_HOME: Record<string, string> = {
 export default clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return;
 
-  const { userId, sessionClaims } = await auth.protect();
+  const { userId } = await auth.protect();
   if (!userId) return;
 
   const pathname = req.nextUrl.pathname;
 
-  // Role is stored in Clerk publicMetadata and synced via webhook
-  const role = ((sessionClaims?.publicMetadata as Record<string, unknown>)?.role as string | undefined)
-    ?? "TENANT";
+  // Fetch role directly from DB via internal API to avoid sessionClaims caching issues
+  let role = "TENANT";
+  try {
+    const baseUrl = req.nextUrl.origin;
+    const res = await fetch(`${baseUrl}/api/auth/role?clerkId=${userId}`, {
+      headers: { "x-middleware-secret": process.env.MIDDLEWARE_SECRET ?? "" },
+    });
+    if (res.ok) {
+      const data = await res.json();
+      role = data.role ?? "TENANT";
+    }
+  } catch {
+    // fallback to TENANT
+  }
 
   const home = ROLE_HOME[role] ?? "/portal/tenant";
   const isAdmin = ADMIN_ROLES.includes(role);
@@ -42,16 +53,16 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.redirect(new URL(home, req.url));
   }
 
-  // Block portal cross-access (e.g. tenant hitting /portal/vendor)
+  // Block portal cross-access
   if (pathname.startsWith("/portal/")) {
-    const portalSegment = pathname.split("/")[2]; // "tenant", "owner", etc.
+    const portalSegment = pathname.split("/")[2];
     const expectedSegment = home.split("/")[2];
     if (portalSegment !== expectedSegment && !isAdmin) {
       return NextResponse.redirect(new URL(home, req.url));
     }
   }
 
-  // Redirect root to the right home
+  // Redirect root to right home
   if (pathname === "/" || pathname === "") {
     return NextResponse.redirect(new URL(home, req.url));
   }

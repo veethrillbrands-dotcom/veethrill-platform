@@ -178,9 +178,12 @@ model Property {
   createdAt   DateTime       @default(now())
   updatedAt   DateTime       @updatedAt
 
-  units       Unit[]
-  workOrders  WorkOrder[]
-  inspections Inspection[]
+  units           Unit[]
+  workOrders      WorkOrder[]
+  inspections     Inspection[]
+  contactLinks    CrmContactProperty[]
+  tasks           CrmTask[]
+  meetings        CrmMeeting[]
 
   @@map("properties")
 }
@@ -480,30 +483,166 @@ model CrmContact {
   source          String?
   notes           String?
   createdByUserId String?
+  linkedRole      String?  // TENANT, OWNER, VENDOR, AGENT, MAINTENANCE_STAFF
+  linkedUserId    String?  // links to User.id once converted
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  deals CrmDeal[]
+  deals      CrmDeal[]
+  activities CrmContactActivity[]
+  properties CrmContactProperty[]
+  tasks      CrmTask[]
+  meetings   CrmMeeting[]
 
   @@map("crm_contacts")
 }
 
-model CrmDeal {
-  id          String    @id @default(cuid())
-  title       String
-  contactId   String?
-  contactName String
-  value       Float     @default(0)
-  stage       String    @default("Enquiry")
-  probability Int       @default(30)
-  dueDate     DateTime?
-  notes       String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+model CrmContactActivity {
+  id             String   @id @default(cuid())
+  contactId      String
+  loggedByUserId String?
+  loggedByName   String?
+  type           String   // CALL_OUT, CALL_IN, EMAIL_OUT, EMAIL_IN, WHATSAPP, MEETING, SITE_VISIT, NOTE, SMS
+  subject        String?
+  body           String
+  outcome        String?
+  duration       Int?     // minutes (for calls/meetings)
+  attachments    String[]
+  activityAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  contact CrmContact? @relation(fields: [contactId], references: [id])
+  contact CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+
+  @@map("crm_contact_activities")
+}
+
+model CrmContactProperty {
+  id         String   @id @default(cuid())
+  contactId  String
+  propertyId String
+  interest   String   @default("Interested") // Buyer, Tenant, Investor, Interested
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  contact  CrmContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  property Property   @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+
+  @@unique([contactId, propertyId])
+  @@map("crm_contact_properties")
+}
+
+model CrmPipeline {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  isDefault   Boolean  @default(false)
+  color       String   @default("#1e3a5f")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  stages CrmPipelineStage[]
+  deals  CrmDeal[]
+
+  @@map("crm_pipelines")
+}
+
+model CrmPipelineStage {
+  id          String   @id @default(cuid())
+  pipelineId  String
+  name        String
+  order       Int
+  color       String   @default("#6B7280")
+  probability Int      @default(30)
+  isWon       Boolean  @default(false)
+  isLost      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pipeline CrmPipeline @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  deals    CrmDeal[]
+
+  @@map("crm_pipeline_stages")
+}
+
+model CrmDeal {
+  id                String    @id @default(cuid())
+  title             String
+  contactId         String?
+  contactName       String
+  value             Float     @default(0)
+  stage             String    @default("Enquiry")  // kept for backward compat
+  probability       Int       @default(30)
+  expectedCloseDate DateTime?
+  dueDate           DateTime?
+  notes             String?
+  pipelineId        String?
+  pipelineStageId   String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  contact       CrmContact?       @relation(fields: [contactId], references: [id])
+  tasks         CrmTask[]
+  meetings      CrmMeeting[]
+  pipeline      CrmPipeline?      @relation(fields: [pipelineId], references: [id])
+  pipelineStage CrmPipelineStage? @relation(fields: [pipelineStageId], references: [id])
 
   @@map("crm_deals")
+}
+
+model CrmMeeting {
+  id              String    @id @default(cuid())
+  title           String
+  type            String    @default("PHYSICAL") // VIRTUAL, PHYSICAL
+  status          String    @default("SCHEDULED") // SCHEDULED, COMPLETED, CANCELLED, RESCHEDULED
+  scheduledAt     DateTime
+  duration        Int       @default(60) // minutes
+  location        String?
+  meetingUrl      String?
+  brief           String?
+  outcome         String?
+  attendees       Json      @default("[]") // [{name, email?, role?}]
+  contactId       String?
+  dealId          String?
+  propertyId      String?
+  createdByUserId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  contact  CrmContact? @relation(fields: [contactId], references: [id])
+  deal     CrmDeal?    @relation(fields: [dealId], references: [id])
+  property Property?   @relation(fields: [propertyId], references: [id])
+
+  @@map("crm_meetings")
+}
+
+model CrmTask {
+  id               String    @id @default(cuid())
+  title            String
+  description      String?
+  type             String    @default("TASK") // TASK, CALL, EMAIL, FOLLOW_UP, MEETING, REMINDER, SITE_VISIT, INSPECTION
+  status           String    @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED, CANCELLED
+  priority         String    @default("MEDIUM") // LOW, MEDIUM, HIGH, URGENT
+  dueAt            DateTime?
+  completedAt      DateTime?
+  tags             String[]
+  notes            String?
+  // Entity links
+  contactId        String?
+  dealId           String?
+  propertyId       String?
+  // Assignment
+  createdByUserId  String?
+  assignedToUserId String?
+  assignedToName   String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  contact  CrmContact? @relation(fields: [contactId], references: [id])
+  deal     CrmDeal?    @relation(fields: [dealId], references: [id])
+  property Property?   @relation(fields: [propertyId], references: [id])
+
+  @@map("crm_tasks")
 }
 
 model CrmCommission {

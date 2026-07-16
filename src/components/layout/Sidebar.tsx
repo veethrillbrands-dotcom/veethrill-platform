@@ -9,7 +9,7 @@ import {
   Briefcase, Wrench, FileText, CalendarDays, CreditCard, Cog,
   Search, BookOpen, TrendingUp, FolderOpen, MessageSquare, Sparkles,
   Settings, FileCheck, UserCircle2, GitMerge, CheckSquare, Award, BookMarked,
-  X, Menu,
+  ClipboardList, CalendarCheck, X, Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +18,7 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Briefcase, Wrench, FileText, CalendarDays, CreditCard, Cog,
   Search, BookOpen, TrendingUp, FolderOpen, MessageSquare, Sparkles,
   FileCheck, UserCircle2, GitMerge, CheckSquare, Award, BookMarked,
+  ClipboardList, CalendarCheck,
 };
 
 const NAV = [
@@ -33,6 +34,8 @@ const NAV = [
     { label: "Training", href: "/dashboard/crm/training", icon: "BookMarked" },
     { label: "Inv. Dossiers", href: "/dashboard/crm/dossiers", icon: "FolderOpen" },
     { label: "Market Alerts", href: "/dashboard/crm/subscriptions", icon: "CheckSquare" },
+    { label: "Tasks", href: "/dashboard/crm/tasks", icon: "ClipboardList" },
+    { label: "Meetings", href: "/dashboard/crm/meetings", icon: "CalendarCheck" },
   ]},
   { group: "Portfolio", items: [
     { label: "Properties", href: "/dashboard/properties", icon: "Building2" },
