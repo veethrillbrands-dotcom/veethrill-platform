@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Users, UserCheck, Building2, Globe, Trash2 } from "lucide-react";
+import { X, Users, UserCheck, Building2, Globe, Trash2, MessageCircle, Phone, Mail } from "lucide-react";
 import { getInitials } from "@/lib/utils";
 
 type Contact = {
@@ -141,7 +141,7 @@ export default function ContactsPage() {
       <Topbar title="CRM Contacts" action={{ label: "Add Contact", onClick: () => setAdding(true) }} />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: "Total Contacts", value: contacts.length, icon: <Users size={16} />, color: "var(--navy)" },
             { label: "Clients", value: contacts.filter((c) => c.type === "Client").length, icon: <UserCheck size={16} />, color: "var(--emerald)" },
@@ -192,7 +192,7 @@ export default function ContactsPage() {
                     <th className="pl-5 pr-2 py-3 w-8">
                       <input type="checkbox" checked={allChecked} onChange={toggleAll} className="w-3.5 h-3.5 rounded accent-yellow-500" />
                     </th>
-                    {["Contact", "Type", "Company", "Phone", "Location", "Source", "Notes", ""].map((h) => (
+                    {["Contact", "Type", "Company", "Phone", "Location", "Source", "Notes", "Actions"].map((h) => (
                       <th key={h} className="text-left text-[10.5px] font-bold uppercase tracking-wider text-gray-400 px-4 py-3">{h}</th>
                     ))}
                   </tr>
@@ -228,10 +228,31 @@ export default function ContactsPage() {
                       <td className="px-4 py-3"><span className="text-[10.5px] font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{c.source ?? "—"}</span></td>
                       <td className="px-4 py-3 text-[12px] text-gray-500 max-w-[200px] truncate">{c.notes ?? "—"}</td>
                       <td className="px-4 py-3">
-                        <button onClick={() => deleteContact(c.id)}
-                          className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Trash2 size={12} className="text-red-500" />
-                        </button>
+                        <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          {c.phone && (
+                            <a href={`tel:${c.phone}`}
+                              className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors" title={`Call ${c.name}`}>
+                              <Phone size={12} className="text-blue-600" />
+                            </a>
+                          )}
+                          {c.email && (
+                            <a href={`mailto:${c.email}?subject=Veethrill Realty — Message for ${c.name}`}
+                              className="w-7 h-7 rounded-lg bg-purple-50 hover:bg-purple-100 flex items-center justify-center transition-colors" title={`Email ${c.name}`}>
+                              <Mail size={12} className="text-purple-600" />
+                            </a>
+                          )}
+                          {c.phone && (
+                            <a href={`https://wa.me/${c.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${c.name.split(" ")[0]}, this is the Veethrill Realty team. How can we assist you today?`)}`}
+                              target="_blank" rel="noopener noreferrer"
+                              className="w-7 h-7 rounded-lg bg-green-50 hover:bg-green-100 flex items-center justify-center transition-colors" title="WhatsApp">
+                              <MessageCircle size={12} className="text-green-600" />
+                            </a>
+                          )}
+                          <button onClick={() => deleteContact(c.id)}
+                            className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors">
+                            <Trash2 size={12} className="text-red-500" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}

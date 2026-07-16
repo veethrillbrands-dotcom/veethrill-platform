@@ -22,7 +22,7 @@ const TYPE_COLORS: Record<string, string> = {
   "Emergency": "bg-red-200 text-red-800",
 };
 
-function getStatus(insp: { completedAt: Date | null; scheduledAt: Date }) {
+function getStatus(insp: { completedAt: Date | string | null; scheduledAt: Date | string }) {
   if (insp.completedAt) return "COMPLETED";
   if (new Date(insp.scheduledAt) > new Date()) return "SCHEDULED";
   return "PENDING";

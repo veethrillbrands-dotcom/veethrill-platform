@@ -103,7 +103,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* KPI Row */}
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             label="Monthly Revenue"
             value={formatCurrency(kpis.monthlyRevenue)}
@@ -141,8 +141,8 @@ export default async function DashboardPage() {
         </div>
 
         {/* Revenue Chart + Occupancy */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
             <RevenueChart data={revenueChartData} />
           </div>
           <div className="flex flex-col gap-4">
@@ -170,7 +170,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Properties + Maintenance + Activity */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Top Properties */}
           <Card>
             <CardHeader>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
 import { AddTenantModal } from "@/components/modals/AddTenantModal";
-import { Pencil, Trash2, X, CheckCircle, CheckSquare } from "lucide-react";
+import { Pencil, Trash2, X, CheckCircle, CheckSquare, MessageCircle, Phone, Mail } from "lucide-react";
 
 type Tenant = {
   id: string; employerName: string | null; emergencyContact: string | null; emergencyPhone: string | null;
@@ -193,9 +193,27 @@ export function TenantsTable({ tenants }: { tenants: TenantRow[] }) {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {t.user.phone && (
+                      <a href={`tel:${t.user.phone}`} title={`Call ${t.user.firstName}`}
+                        className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors">
+                        <Phone size={12} className="text-blue-600" />
+                      </a>
+                    )}
+                    <a href={`mailto:${t.user.email}?subject=Veethrill Realty — Message for ${t.user.firstName}`}
+                      title={`Email ${t.user.firstName}`}
+                      className="w-7 h-7 rounded-lg bg-purple-50 hover:bg-purple-100 flex items-center justify-center transition-colors">
+                      <Mail size={12} className="text-purple-600" />
+                    </a>
+                    {t.user.phone && (
+                      <a href={`https://wa.me/${t.user.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hi ${t.user.firstName}, this is Veethrill Realty. We'd like to reach out regarding your tenancy. Please feel free to respond here.`)}`}
+                        target="_blank" rel="noopener noreferrer" title="WhatsApp"
+                        className="w-7 h-7 rounded-lg bg-green-50 hover:bg-green-100 flex items-center justify-center transition-colors">
+                        <MessageCircle size={12} className="text-green-600" />
+                      </a>
+                    )}
                     <button onClick={() => setEditingId(t.id)} title="Edit tenant"
-                      className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors">
-                      <Pencil size={12} className="text-blue-600" />
+                      className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-colors">
+                      <Pencil size={12} className="text-gray-500" />
                     </button>
                     <button onClick={() => deleteTenant(t.id, `${t.user.firstName} ${t.user.lastName}`)} title="Delete tenant"
                       className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors">

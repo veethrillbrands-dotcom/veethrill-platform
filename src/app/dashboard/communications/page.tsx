@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
-import { MessageSquare, Bell, Mail, Phone, Send, Users, CheckCheck, Clock } from "lucide-react";
+import { MessageSquare, Bell, Mail, Phone, Send, Users, CheckCheck, Clock, MessageCircle, PhoneCall } from "lucide-react";
 
 const MESSAGES = [
   { id: 1, sender: "Chidi Okafor", avatar: "CO", subject: "AC Repair Status", body: "Good afternoon, I wanted to check on the status of the AC repair in Unit 7C. It's been quite warm. Thank you.", time: "2m ago", unread: true, type: "tenant" },
@@ -44,11 +44,11 @@ export default function CommunicationsPage() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       <Topbar title="Communications" action={{ label: "New Message" }} />
-      <div className="flex-1 overflow-hidden p-6">
-        <div className="h-full grid grid-cols-12 gap-4">
+      <div className="flex-1 overflow-hidden p-3 sm:p-6">
+        <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
 
           {/* Left sidebar */}
-          <div className="col-span-3 flex flex-col gap-3">
+          <div className="lg:col-span-3 flex flex-col gap-3">
             {/* Tabs */}
             <div className="bg-white rounded-2xl border border-gray-100 p-1.5 flex gap-1">
               {([
@@ -139,7 +139,7 @@ export default function CommunicationsPage() {
           </div>
 
           {/* Message Thread */}
-          <div className="col-span-9 flex flex-col gap-3">
+          <div className="lg:col-span-9 flex flex-col gap-3">
             {tab === "inbox" && selected && (
               <>
                 <div className="bg-white rounded-2xl border border-gray-100 p-5 flex-1 overflow-y-auto">
@@ -198,7 +198,12 @@ export default function CommunicationsPage() {
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100">
                     <div className="flex items-center gap-2">
                       <button className="text-[11.5px] text-gray-500 hover:text-gray-700 flex items-center gap-1"><Phone size={12} /> Call</button>
-                      <button className="text-[11.5px] text-gray-500 hover:text-gray-700 flex items-center gap-1 ml-3"><Bell size={12} /> Notify</button>
+                      <button className="text-[11.5px] text-gray-500 hover:text-gray-700 flex items-center gap-1 ml-2"><Bell size={12} /> Notify</button>
+                      <a href={`https://wa.me/?text=${encodeURIComponent(reply || `Hi ${selected.sender.split(" ")[0]}, this is Veethrill Realty. `)}`}
+                        target="_blank" rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-[11.5px] text-green-600 hover:text-green-700 ml-2 font-semibold">
+                        <MessageCircle size={12} /> WhatsApp
+                      </a>
                     </div>
                     <button
                       onClick={() => setReply("")}

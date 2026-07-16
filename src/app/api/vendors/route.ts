@@ -29,7 +29,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    const existingUser = await db.user.findUnique({ where: { email } });
+    const existingUser = await db.user.findUnique({ where: { email }, include: { vendor: true } });
     if (existingUser?.vendor) {
       return NextResponse.json({ error: "Vendor already registered for this email" }, { status: 409 });
     }

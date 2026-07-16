@@ -3,11 +3,13 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard, BarChart2, Building2, Home, Users, UserCheck,
   Briefcase, Wrench, FileText, CalendarDays, CreditCard, Cog,
   Search, BookOpen, TrendingUp, FolderOpen, MessageSquare, Sparkles,
   Settings, FileCheck, UserCircle2, GitMerge, CheckSquare, Award, BookMarked,
+  X, Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -61,21 +63,17 @@ const NAV = [
   ]},
 ];
 
-export function Sidebar() {
+function SidebarContent({ onNav }: { onNav?: () => void }) {
   const pathname = usePathname();
-
-  const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === "/dashboard";
-    return pathname.startsWith(href);
-  };
+  const isActive = (href: string) => href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
 
   return (
-    <aside className="w-[220px] min-w-[220px] flex flex-col overflow-y-auto" style={{ background: "var(--navy)" }}>
+    <aside className="w-full flex flex-col overflow-y-auto h-full" style={{ background: "var(--navy)" }}>
       {/* Brand */}
       <div className="px-4 py-4 border-b border-white/10">
         <div className="flex flex-col items-center gap-2">
-          <div className="w-20 h-20 rounded-xl bg-white flex items-center justify-center p-1.5 flex-shrink-0">
-            <Image src="/logo.png" alt="Veethrill" width={72} height={72} className="object-contain" />
+          <div className="w-16 h-16 rounded-xl bg-white flex items-center justify-center p-1.5 flex-shrink-0">
+            <Image src="/logo.png" alt="Veethrill" width={56} height={56} className="object-contain" />
           </div>
           <div className="text-center">
             <div className="text-white font-bold text-[11px] leading-tight">Veethrill Realty</div>
@@ -85,7 +83,7 @@ export function Sidebar() {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 py-2">
+      <nav className="flex-1 py-2 overflow-y-auto">
         {NAV.map((section) => (
           <div key={section.group} className="mb-1">
             <div className="px-4 pt-4 pb-1.5 text-[9.5px] font-bold uppercase tracking-widest text-white/30">
@@ -95,7 +93,7 @@ export function Sidebar() {
               const Icon = ICON_MAP[item.icon];
               const active = isActive(item.href);
               return (
-                <Link key={item.href} href={item.href}
+                <Link key={item.href} href={item.href} onClick={onNav}
                   className={cn(
                     "flex items-center gap-2.5 mx-2 px-3 py-2 rounded-lg text-[12.5px] font-medium transition-all",
                     active
@@ -126,5 +124,65 @@ export function Sidebar() {
         </div>
       </div>
     </aside>
+  );
+}
+
+export function Sidebar() {
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const pathname = usePathname();
+
+  // Close on route change
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  // Prevent body scroll when open
+  useEffect(() => {
+    if (mobileOpen) document.body.style.overflow = "hidden";
+    else document.body.style.overflow = "";
+    return () => { document.body.style.overflow = ""; };
+  }, [mobileOpen]);
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <div className="hidden lg:flex w-[220px] min-w-[220px] flex-col overflow-hidden">
+        <SidebarContent />
+      </div>
+
+      {/* Mobile drawer overlay */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-40 lg:hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
+          {/* Drawer */}
+          <div className="absolute left-0 top-0 bottom-0 w-[260px] z-50 flex flex-col shadow-2xl">
+            <div className="absolute top-3 right-3 z-10">
+              <button onClick={() => setMobileOpen(false)}
+                className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20">
+                <X size={16} />
+              </button>
+            </div>
+            <SidebarContent onNav={() => setMobileOpen(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Mobile hamburger trigger — exposed via MobileMenuButton */}
+      <button
+        id="mobile-menu-btn"
+        onClick={() => setMobileOpen(true)}
+        className="hidden"
+        aria-label="Open menu"
+      />
+    </>
+  );
+}
+
+export function MobileMenuButton() {
+  return (
+    <button
+      onClick={() => document.getElementById("mobile-menu-btn")?.click()}
+      className="lg:hidden w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-gray-100 transition-colors flex-shrink-0">
+      <Menu size={16} className="text-gray-700" />
+    </button>
   );
 }

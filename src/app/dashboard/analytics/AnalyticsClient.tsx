@@ -76,7 +76,7 @@ export function AnalyticsClient({ live }: { live: LiveKPIs }) {
       <Topbar title="Analytics & Reports" />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {kpis.map((k) => (
             <div key={k.label} className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
               <div className="flex items-center justify-between mb-2">
@@ -130,8 +130,8 @@ export function AnalyticsClient({ live }: { live: LiveKPIs }) {
           </CardBody>
         </Card>
 
-        <div className="grid grid-cols-3 gap-4">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle sub="By property type · Jan–Jul 2026">Occupancy Rate Trend</CardTitle>
