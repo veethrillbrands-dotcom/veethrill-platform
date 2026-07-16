@@ -25,6 +25,15 @@ const NAV = [
     { label: "Dashboard", href: "/dashboard", icon: "LayoutDashboard" },
     { label: "Analytics", href: "/dashboard/analytics", icon: "BarChart2" },
   ]},
+  { group: "CRM", items: [
+    { label: "Contacts", href: "/dashboard/crm/contacts", icon: "UserCircle2" },
+    { label: "Pipeline", href: "/dashboard/crm/pipeline", icon: "GitMerge" },
+    { label: "Team & Agents", href: "/dashboard/crm/team", icon: "Award" },
+    { label: "Commissions", href: "/dashboard/crm/commissions", icon: "TrendingUp" },
+    { label: "Training", href: "/dashboard/crm/training", icon: "BookMarked" },
+    { label: "Inv. Dossiers", href: "/dashboard/crm/dossiers", icon: "FolderOpen" },
+    { label: "Market Alerts", href: "/dashboard/crm/subscriptions", icon: "CheckSquare" },
+  ]},
   { group: "Portfolio", items: [
     { label: "Properties", href: "/dashboard/properties", icon: "Building2" },
     { label: "Units", href: "/dashboard/units", icon: "Home" },
@@ -42,15 +51,6 @@ const NAV = [
     { label: "Invoices", href: "/dashboard/invoices", icon: "FileCheck" },
     { label: "Maintenance", href: "/dashboard/maintenance", icon: "Cog" },
     { label: "Inspections", href: "/dashboard/inspections", icon: "Search" },
-  ]},
-  { group: "CRM", items: [
-    { label: "Contacts", href: "/dashboard/crm/contacts", icon: "UserCircle2" },
-    { label: "Pipeline", href: "/dashboard/crm/pipeline", icon: "GitMerge" },
-    { label: "Team & Agents", href: "/dashboard/crm/team", icon: "Award" },
-    { label: "Commissions", href: "/dashboard/crm/commissions", icon: "TrendingUp" },
-    { label: "Training", href: "/dashboard/crm/training", icon: "BookMarked" },
-    { label: "Inv. Dossiers", href: "/dashboard/crm/dossiers", icon: "FolderOpen" },
-    { label: "Market Alerts", href: "/dashboard/crm/subscriptions", icon: "CheckSquare" },
   ]},
   { group: "Finance", items: [
     { label: "Accounting", href: "/dashboard/accounting", icon: "BookOpen" },
