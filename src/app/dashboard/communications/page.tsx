@@ -3,16 +3,75 @@
 import { useState, useEffect, useCallback } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
-import { MessageSquare, Bell, Mail, Phone, Send, Users, CheckCheck, Clock, MessageCircle, PhoneCall } from "lucide-react";
+import { MessageSquare, Bell, Mail, Phone, Send, Users, CheckCheck, Clock, MessageCircle, PhoneCall, Trash2, X, Plus } from "lucide-react";
 
-const MESSAGES = [
-  { id: 1, sender: "Chidi Okafor", avatar: "CO", subject: "AC Repair Status", body: "Good afternoon, I wanted to check on the status of the AC repair in Unit 7C. It's been quite warm. Thank you.", time: "2m ago", unread: true, type: "tenant" },
-  { id: 2, sender: "Ngozi Adeyemi", avatar: "NA", subject: "Lease Renewal Enquiry", body: "Hi, my lease is up in August. I would love to renew for another 2 years. Can we discuss the new terms?", time: "1h ago", unread: true, type: "tenant" },
-  { id: 3, sender: "Emeka Bello", avatar: "EB", subject: "Payment Confirmation", body: "Please find attached my rent payment receipt for June. Let me know if you need anything else.", time: "3h ago", unread: false, type: "tenant" },
-  { id: 4, sender: "Ahmed Al-Rashid", avatar: "AA", subject: "Early Check-out Request", body: "Hello, I need to check out a day earlier than planned on July 18th. Please advise on the refund process.", time: "5h ago", unread: false, type: "guest" },
-  { id: 5, sender: "Fatima Abubakar", avatar: "FA", subject: "Water Pressure Issue", body: "There seems to be a water pressure issue in Block A-1. It started this morning. Please send someone to check.", time: "Yesterday", unread: false, type: "tenant" },
-  { id: 6, sender: "Tunde Fashola", avatar: "TF", subject: "Guest Parking Request", body: "I will have guests visiting this weekend. Can I get a temporary guest parking pass for 2 cars?", time: "Yesterday", unread: false, type: "tenant" },
-];
+type Message = {
+  id: string; subject: string; body: string; type: string; createdAt: string;
+  sender: { id: string; firstName: string; lastName: string; role: string };
+};
+
+function initials(m: Message) {
+  return `${m.sender.firstName[0]}${m.sender.lastName[0]}`.toUpperCase();
+}
+function displayName(m: Message) { return `${m.sender.firstName} ${m.sender.lastName}`; }
+function relTime(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function ComposeModal({ onClose, onSent }: { onClose: () => void; onSent: () => void }) {
+  const [form, setForm] = useState({ subject: "", body: "" });
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState("");
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  async function send() {
+    if (!form.subject || !form.body) return;
+    setSending(true); setError("");
+    const res = await fetch("/api/messages", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, type: "DIRECT" }),
+    });
+    if (res.ok) { onSent(); onClose(); }
+    else { const d = await res.json().catch(() => ({})); setError(d.error ?? "Failed to send"); setSending(false); }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between" style={{ background: "var(--navy)" }}>
+          <div className="text-[15px] font-bold text-white">New Message</div>
+          <button onClick={onClose} className="text-white/60 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Subject</label>
+            <input value={form.subject} onChange={(e) => set("subject", e.target.value)}
+              placeholder="Message subject…"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+          </div>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Message</label>
+            <textarea value={form.body} onChange={(e) => set("body", e.target.value)} rows={5}
+              placeholder="Type your message…"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 resize-none" />
+          </div>
+          {error && <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-2.5 text-[12.5px] text-red-700">{error}</div>}
+        </div>
+        <div className="px-6 pb-6 flex gap-3">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={send} disabled={sending || !form.subject || !form.body}
+            className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40 flex items-center justify-center gap-2"
+            style={{ background: "var(--navy)" }}>
+            <Send size={14} /> {sending ? "Sending…" : "Send Message"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const ANNOUNCEMENTS = [
   { id: 1, title: "Generator Maintenance — Lekki Gardens", body: "Scheduled maintenance on Saturday July 19th from 10AM–2PM. Generator will be offline. Apologies for any inconvenience.", sent: "Jul 14, 2026", recipients: 12, opened: 9 },
@@ -23,11 +82,23 @@ const ANNOUNCEMENTS = [
 type Notif = { icon: string; text: string; time: string; color: string; severity: "critical" | "warning" | "info" };
 
 export default function CommunicationsPage() {
-  const [selected, setSelected] = useState(MESSAGES[0]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [selected, setSelected] = useState<Message | null>(null);
   const [reply, setReply] = useState("");
   const [tab, setTab] = useState<"inbox" | "announcements" | "notifications">("inbox");
   const [notifs, setNotifs] = useState<Notif[]>([]);
   const [notifsLoading, setNotifsLoading] = useState(false);
+  const [composing, setComposing] = useState(false);
+
+  const loadMessages = useCallback(async () => {
+    const res = await fetch("/api/messages");
+    if (res.ok) {
+      const data = await res.json();
+      const msgs = Array.isArray(data) ? data : [];
+      setMessages(msgs);
+      if (msgs.length > 0 && !selected) setSelected(msgs[0]);
+    }
+  }, []);
 
   const loadNotifs = useCallback(async () => {
     setNotifsLoading(true);
@@ -36,14 +107,22 @@ export default function CommunicationsPage() {
     setNotifsLoading(false);
   }, []);
 
-  useEffect(() => { loadNotifs(); }, [loadNotifs]);
+  useEffect(() => { loadMessages(); loadNotifs(); }, [loadMessages, loadNotifs]);
 
-  const unread = MESSAGES.filter((m) => m.unread).length;
+  async function deleteMessage(id: string) {
+    if (!confirm("Delete this message?")) return;
+    await fetch("/api/messages", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id }) });
+    setMessages((prev) => prev.filter((m) => m.id !== id));
+    if (selected?.id === id) setSelected(null);
+  }
+
+  const unread = 0;
   const criticalCount = notifs.filter((n) => n.severity === "critical").length;
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Communications" action={{ label: "New Message" }} />
+      <Topbar title="Communications" action={{ label: "New Message", onClick: () => setComposing(true) }} />
+      {composing && <ComposeModal onClose={() => setComposing(false)} onSent={loadMessages} />}
       <div className="flex-1 overflow-hidden p-3 sm:p-6">
         <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4">
 
@@ -68,8 +147,8 @@ export default function CommunicationsPage() {
             {/* Stats */}
             <div className="grid grid-cols-2 gap-2">
               {[
-                { label: "Unread", value: unread, icon: <Mail size={13} />, color: "var(--gold)" },
-                { label: "Tenants", value: 5, icon: <Users size={13} />, color: "var(--emerald)" },
+                { label: "Messages", value: messages.length, icon: <Mail size={13} />, color: "var(--gold)" },
+                { label: "Total", value: messages.length, icon: <Users size={13} />, color: "var(--emerald)" },
               ].map((s) => (
                 <div key={s.label} className="bg-white rounded-xl border border-gray-100 p-3 text-center">
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center mx-auto mb-1" style={{ background: `${s.color}15`, color: s.color }}>
@@ -83,25 +162,31 @@ export default function CommunicationsPage() {
 
             {/* Message List */}
             <div className="bg-white rounded-2xl border border-gray-100 flex-1 overflow-y-auto">
-              {tab === "inbox" && MESSAGES.map((m) => (
+              {tab === "inbox" && (messages.length === 0 ? (
+                <div className="px-4 py-8 text-center text-[12px] text-gray-400">No messages yet. Click "New Message" to send one.</div>
+              ) : messages.map((m) => (
                 <div key={m.id} onClick={() => setSelected(m)}
-                  className={`px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${selected.id === m.id ? "bg-yellow-50 border-l-2 border-l-yellow-400" : ""}`}>
+                  className={`px-4 py-3 border-b border-gray-50 cursor-pointer hover:bg-gray-50 transition-colors ${selected?.id === m.id ? "bg-yellow-50 border-l-2 border-l-yellow-400" : ""}`}>
                   <div className="flex items-center gap-2 mb-1">
                     <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0"
                       style={{ background: "linear-gradient(135deg, var(--gold), #b8960a)", color: "var(--navy)" }}>
-                      {m.avatar}
+                      {initials(m)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className={`text-[12px] ${m.unread ? "font-bold text-gray-900" : "font-semibold text-gray-700"} truncate`}>{m.sender}</span>
-                        <span className="text-[10px] text-gray-400 ml-1 whitespace-nowrap">{m.time}</span>
+                        <span className="text-[12px] font-semibold text-gray-700 truncate">{displayName(m)}</span>
+                        <span className="text-[10px] text-gray-400 ml-1 whitespace-nowrap">{relTime(m.createdAt)}</span>
                       </div>
-                      <div className={`text-[11px] truncate ${m.unread ? "font-semibold text-gray-800" : "text-gray-500"}`}>{m.subject}</div>
+                      <div className="text-[11px] truncate text-gray-500">{m.subject}</div>
                     </div>
-                    {m.unread && <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />}
+                    <button onClick={(e) => { e.stopPropagation(); deleteMessage(m.id); }}
+                      className="ml-1 w-5 h-5 flex items-center justify-center rounded text-gray-300 hover:text-red-400 hover:bg-red-50">
+                      <Trash2 size={11} />
+                    </button>
                   </div>
                 </div>
-              ))}
+              )))}
+
 
               {tab === "notifications" && (
                 notifsLoading ? (
@@ -147,18 +232,18 @@ export default function CommunicationsPage() {
                     <div className="flex items-center gap-3">
                       <div className="w-11 h-11 rounded-full flex items-center justify-center text-[13px] font-black"
                         style={{ background: "linear-gradient(135deg, var(--gold), #b8960a)", color: "var(--navy)" }}>
-                        {selected.avatar}
+                        {initials(selected)}
                       </div>
                       <div>
-                        <div className="text-[15px] font-bold text-gray-900">{selected.sender}</div>
+                        <div className="text-[15px] font-bold text-gray-900">{displayName(selected)}</div>
                         <div className="text-[11.5px] text-gray-400">Re: {selected.subject}</div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className={`text-[10.5px] font-bold px-2.5 py-1 rounded-full ${selected.type === "tenant" ? "bg-blue-50 text-blue-700" : "bg-purple-50 text-purple-700"}`}>
-                        {selected.type === "tenant" ? "Tenant" : "Guest"}
+                      <span className="text-[10.5px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-700">
+                        {selected.sender.role}
                       </span>
-                      <span className="text-[11px] text-gray-400">{selected.time}</span>
+                      <span className="text-[11px] text-gray-400">{relTime(selected.createdAt)}</span>
                     </div>
                   </div>
 
@@ -191,7 +276,7 @@ export default function CommunicationsPage() {
                   <textarea
                     value={reply}
                     onChange={(e) => setReply(e.target.value)}
-                    placeholder={`Reply to ${selected.sender}...`}
+                    placeholder={`Reply to ${displayName(selected)}...`}
                     rows={3}
                     className="w-full text-[13px] text-gray-800 placeholder-gray-400 resize-none outline-none border-none bg-transparent"
                   />
@@ -199,7 +284,7 @@ export default function CommunicationsPage() {
                     <div className="flex items-center gap-2">
                       <button className="text-[11.5px] text-gray-500 hover:text-gray-700 flex items-center gap-1"><Phone size={12} /> Call</button>
                       <button className="text-[11.5px] text-gray-500 hover:text-gray-700 flex items-center gap-1 ml-2"><Bell size={12} /> Notify</button>
-                      <a href={`https://wa.me/?text=${encodeURIComponent(reply || `Hi ${selected.sender.split(" ")[0]}, this is Veethrill Realty. `)}`}
+                      <a href={`https://wa.me/?text=${encodeURIComponent(reply || `Hi ${selected.sender.firstName}, this is Veethrill Realty. `)}`}
                         target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-1 text-[11.5px] text-green-600 hover:text-green-700 ml-2 font-semibold">
                         <MessageCircle size={12} /> WhatsApp

@@ -1,4 +1,4 @@
-import { Topbar } from "@/components/layout/Topbar";
+import { AccountingTopbar, ManualLedger } from "./AccountingClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { db } from "@/lib/db";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -48,7 +48,7 @@ export default async function AccountingPage() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      <Topbar title="Accounting" action={{ label: "New Entry" }} />
+      <AccountingTopbar />
       <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
         {/* P&L Summary Cards */}
@@ -172,6 +172,9 @@ export default async function AccountingPage() {
             </CardBody>
           </Card>
         </div>
+
+        {/* Manual Entries */}
+        <ManualLedger />
 
       </div>
     </div>

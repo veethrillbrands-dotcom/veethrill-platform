@@ -24,6 +24,7 @@ function NewBookingModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
   const [units, setUnits] = useState<Unit[]>([]);
   const [form, setForm] = useState({
     unitId: "", guestName: "", guestEmail: "", guestPhone: "",
@@ -34,6 +35,7 @@ function NewBookingModal({ onClose }: { onClose: () => void }) {
   useEffect(() => { fetch("/api/units").then((r) => r.json()).then(setUnits); }, []);
 
   async function save() {
+    setError("");
     setSaving(true);
     const res = await fetch("/api/shortlet-bookings", {
       method: "POST",
@@ -41,7 +43,11 @@ function NewBookingModal({ onClose }: { onClose: () => void }) {
       body: JSON.stringify({ ...form, nightlyRate: Number(form.nightlyRate), guestCount: Number(form.guestCount) }),
     });
     if (res.ok) { setSuccess(true); setTimeout(() => { onClose(); router.refresh(); }, 1200); }
-    else setSaving(false);
+    else {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? `Failed to create booking (${res.status})`);
+      setSaving(false);
+    }
   }
 
   if (success) return (
@@ -122,7 +128,12 @@ function NewBookingModal({ onClose }: { onClose: () => void }) {
         </div>
         <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
-          <button onClick={save} disabled={saving || !form.unitId || !form.guestName || !form.checkIn || !form.checkOut}
+          {error && (
+            <div className="px-6 pb-2 text-[12.5px] text-red-600 font-semibold bg-red-50 border border-red-200 rounded-xl mx-0 -mt-2 py-2.5">
+              {error}
+            </div>
+          )}
+          <button onClick={save} disabled={saving || !form.unitId || !form.guestName || !form.guestPhone || !form.checkIn || !form.checkOut || !form.nightlyRate}
             className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40"
             style={{ background: "var(--emerald)" }}>
             {saving ? "Creating…" : "✓ Create Booking"}

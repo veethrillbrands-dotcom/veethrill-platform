@@ -32,6 +32,7 @@ function AddInspectionModal({ onClose }: { onClose: () => void }) {
   const [success, setSuccess] = useState(false);
   const [properties, setProperties] = useState<Property[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [contacts, setContacts] = useState<{ id: string; name: string; type: string }[]>([]);
   const [form, setForm] = useState({
     propertyId: "", unitId: "", type: "Routine", scheduledAt: "", inspectorId: "", findings: "", rating: "",
   });
@@ -39,6 +40,7 @@ function AddInspectionModal({ onClose }: { onClose: () => void }) {
 
   useEffect(() => {
     fetch("/api/properties").then((r) => r.json()).then(setProperties);
+    fetch("/api/crm/contacts").then((r) => r.json()).then((data) => setContacts(Array.isArray(data) ? data : []));
   }, []);
 
   useEffect(() => {
@@ -106,9 +108,17 @@ function AddInspectionModal({ onClose }: { onClose: () => void }) {
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
           </div>
           <div>
-            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Inspector Name</label>
-            <input value={form.inspectorId} onChange={(e) => set("inspectorId", e.target.value)} placeholder="e.g. Amara Okonkwo"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Inspector</label>
+            {contacts.length > 0 ? (
+              <select value={form.inspectorId} onChange={(e) => set("inspectorId", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 bg-white">
+                <option value="">Select inspector or type name below…</option>
+                {contacts.map((c) => <option key={c.id} value={c.name}>{c.name} ({c.type})</option>)}
+              </select>
+            ) : null}
+            <input value={form.inspectorId} onChange={(e) => set("inspectorId", e.target.value)}
+              placeholder="Type inspector name…"
+              className={`w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 ${contacts.length > 0 ? "mt-2" : ""}`} />
           </div>
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Initial Findings</label>

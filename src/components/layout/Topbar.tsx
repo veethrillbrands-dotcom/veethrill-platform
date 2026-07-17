@@ -2,6 +2,7 @@
 
 import { Bell, Search, Plus, ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { MobileMenuButton } from "./Sidebar";
 
 interface TopbarProps {
@@ -11,6 +12,7 @@ interface TopbarProps {
 }
 
 export function Topbar({ title, action, backHref }: TopbarProps) {
+  const router = useRouter();
   return (
     <header className="h-14 min-h-14 bg-white border-b border-gray-100 flex items-center px-4 gap-3 shadow-sm z-10">
       {/* Hamburger — mobile only */}
@@ -39,7 +41,10 @@ export function Topbar({ title, action, backHref }: TopbarProps) {
       </button>
 
       {/* Notification */}
-      <button className="relative w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-gray-100 transition-colors flex-shrink-0">
+      <button
+        onClick={() => router.push("/dashboard/communications")}
+        className="relative w-9 h-9 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center hover:bg-gray-100 transition-colors flex-shrink-0"
+        title="Notifications">
         <Bell size={15} className="text-gray-600" />
         <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-red-500 rounded-full border border-white" />
       </button>
