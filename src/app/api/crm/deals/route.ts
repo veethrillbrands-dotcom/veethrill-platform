@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await req.json();
-    const { title, contactId, contactName, value, stage, probability, dueDate, notes, pipelineId, pipelineStageId } = body;
+    const { title, contactId, contactName, value, stage, probability, dueDate, notes, productType, pipelineId, pipelineStageId } = body;
     if (!title || !contactName) return NextResponse.json({ error: "Required fields missing" }, { status: 400 });
 
     // If pipeline stage given, sync the stage name
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
         probability: stageProbability,
         dueDate: dueDate ? new Date(dueDate) : undefined,
         notes,
+        productType: productType || undefined,
         pipelineId: pipelineId || null,
         pipelineStageId: pipelineStageId || null,
       },

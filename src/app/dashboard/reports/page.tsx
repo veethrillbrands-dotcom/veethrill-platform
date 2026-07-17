@@ -11,10 +11,10 @@ const REPORT_TEMPLATES = [
     icon: "💰",
     color: "var(--gold)",
     reports: [
-      { name: "Monthly Revenue Report", desc: "Rent collected, shortlet income, late fees by property", freq: "Monthly" },
-      { name: "P&L Statement", desc: "Income vs expenses, NOI, net profit breakdown", freq: "Monthly" },
-      { name: "Cash Flow Forecast", desc: "90-day projection based on active leases and pending payments", freq: "On-demand" },
-      { name: "Owner Remittance Statement", desc: "Net income per owner after management fees", freq: "Monthly" },
+      { name: "Monthly Revenue Report", desc: "Rent collected, shortlet income, late fees by property", freq: "Monthly", slug: "revenue" },
+      { name: "Rent Collection Report", desc: "All payment records — status, due dates, references", freq: "Monthly", slug: "payments" },
+      { name: "Invoice Register", desc: "All invoices with status, totals, and recipients", freq: "Monthly", slug: "invoices" },
+      { name: "Commission Register", desc: "Agent commissions, deal values, payout status", freq: "Monthly", slug: "commissions" },
     ],
   },
   {
@@ -22,9 +22,8 @@ const REPORT_TEMPLATES = [
     icon: "🏢",
     color: "var(--emerald)",
     reports: [
-      { name: "Occupancy Rate Report", desc: "Current and historical occupancy by property and unit type", freq: "Weekly" },
-      { name: "Vacancy Analysis", desc: "Days vacant, rent loss, reasons for vacancy", freq: "Monthly" },
-      { name: "Lease Expiry Report", desc: "Upcoming lease expirations with renewal probability scores", freq: "Monthly" },
+      { name: "Occupancy Rate Report", desc: "Current occupancy by property — total units, occupied, vacant", freq: "Weekly", slug: "occupancy" },
+      { name: "Lease Expiry Report", desc: "All leases with start/end dates and rent amounts", freq: "Monthly", slug: "leases" },
     ],
   },
   {
@@ -32,9 +31,7 @@ const REPORT_TEMPLATES = [
     icon: "🔧",
     color: "#3B82F6",
     reports: [
-      { name: "Work Order Summary", desc: "Open, in-progress, and completed orders with SLA compliance", freq: "Weekly" },
-      { name: "Maintenance Cost Report", desc: "Spend by category, property, and vendor", freq: "Monthly" },
-      { name: "Vendor Performance Report", desc: "Ratings, response times, and cost efficiency per vendor", freq: "Quarterly" },
+      { name: "Work Order Summary", desc: "All work orders with priority, status, and costs", freq: "Weekly", slug: "work-orders" },
     ],
   },
   {
@@ -42,9 +39,7 @@ const REPORT_TEMPLATES = [
     icon: "👥",
     color: "#8B5CF6",
     reports: [
-      { name: "Tenant Portfolio Report", desc: "KYC status, payment history, and lease information", freq: "Monthly" },
-      { name: "Rent Collection Report", desc: "Collection rates, overdue accounts, and payment methods", freq: "Monthly" },
-      { name: "Tenant Satisfaction Summary", desc: "Maintenance response times, complaint resolution rates", freq: "Quarterly" },
+      { name: "Tenant Portfolio Report", desc: "All tenants with KYC status, employer, property, and unit", freq: "Monthly", slug: "tenants" },
     ],
   },
 ];
@@ -67,9 +62,20 @@ const ICON_MAP: Record<string, React.ReactNode> = {
 export default function ReportsPage() {
   const [generating, setGenerating] = useState<string | null>(null);
 
-  function generate(name: string) {
+  async function generate(name: string, slug: string) {
     setGenerating(name);
-    setTimeout(() => setGenerating(null), 2000);
+    try {
+      const res = await fetch(`/api/reports?type=${slug}`);
+      if (!res.ok) throw new Error("Failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug}-${new Date().toISOString().split("T")[0]}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
+    setGenerating(null);
   }
 
   return (
@@ -106,7 +112,7 @@ export default function ReportsPage() {
                 <div className="space-y-2">
                   {cat.reports.map((r) => (
                     <div key={r.name} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors group cursor-pointer"
-                      onClick={() => generate(r.name)}>
+                      onClick={() => generate(r.name, r.slug)}>
                       <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: `${cat.color}15`, color: cat.color }}>
                         <FileText size={14} />
                       </div>
@@ -119,7 +125,7 @@ export default function ReportsPage() {
                         {generating === r.name ? (
                           <div className="w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
                         ) : (
-                          <ChevronRight size={14} className="text-gray-300 group-hover:text-gray-600 transition-colors" />
+                          <Download size={13} className="text-gray-300 group-hover:text-yellow-500 transition-colors" />
                         )}
                       </div>
                     </div>

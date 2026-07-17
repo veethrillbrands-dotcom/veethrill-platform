@@ -16,17 +16,20 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await req.json();
-    const { agent, property, dealValue, commissionRate, type, saleDate } = body;
-    if (!agent || !property) return NextResponse.json({ error: "Required fields missing" }, { status: 400 });
+    const { agent, agentContactId, property, dealId, dealValue, commissionRate, partPaymentAmount, type, saleDate, dueDate } = body;
+    if (!agent) return NextResponse.json({ error: "Agent is required" }, { status: 400 });
     const dv = Number(dealValue) || 0;
     const cr = Number(commissionRate) || 3;
     const commission = await db.crmCommission.create({
       data: {
-        agent, property,
+        agent, agentContactId: agentContactId || undefined,
+        property: property || "", dealId: dealId || undefined,
         dealValue: dv, commissionRate: cr,
         commissionAmount: dv * (cr / 100),
+        partPaymentAmount: partPaymentAmount ? Number(partPaymentAmount) : undefined,
         type: type || "Sale", status: "Pending",
         saleDate: saleDate ? new Date(saleDate) : undefined,
+        dueDate: dueDate ? new Date(dueDate) : undefined,
       },
     });
     return NextResponse.json(commission, { status: 201 });

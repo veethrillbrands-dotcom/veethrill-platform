@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     const { userId } = await auth();
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const body = await req.json();
-    const { title, category, trainer, targetRole, startDate, endDate, venue, capacity, description } = body;
+    const { title, category, trainer, targetRole, startDate, endDate, venue, capacity, description, feePerPerson, billingContact, billingCompany } = body;
     if (!title || !startDate) return NextResponse.json({ error: "Required fields missing" }, { status: 400 });
     const program = await db.crmTrainingProgram.create({
       data: {
@@ -26,6 +26,9 @@ export async function POST(req: Request) {
         endDate: endDate ? new Date(endDate) : undefined,
         venue, capacity: Number(capacity) || 20, enrolled: 0,
         status: "Upcoming", description,
+        feePerPerson: feePerPerson ? Number(feePerPerson) : undefined,
+        billingContact: billingContact || undefined,
+        billingCompany: billingCompany || undefined,
       },
     });
     return NextResponse.json(program, { status: 201 });

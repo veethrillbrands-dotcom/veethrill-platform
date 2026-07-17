@@ -591,6 +591,7 @@ model CrmDeal {
   expectedCloseDate DateTime?
   dueDate           DateTime?
   notes             String?
+  productType       String?   // training, subscriber, dossier, sale, rent, land_acquisition, advisory, REIT, investment, buy_back
   pipelineId        String?
   pipelineStageId   String?
   createdAt         DateTime  @default(now())
@@ -661,58 +662,67 @@ model CrmTask {
 }
 
 model CrmCommission {
-  id               String    @id @default(cuid())
-  agentUserId      String?
-  agent            String
-  property         String
-  dealValue        Float     @default(0)
-  commissionRate   Float     @default(3)
-  commissionAmount Float     @default(0)
-  type             String    @default("Sale")
-  status           String    @default("Pending")
-  saleDate         DateTime?
-  paidDate         DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  agentUserId        String?
+  agent              String
+  agentContactId     String?
+  property           String
+  dealId             String?
+  dealValue          Float     @default(0)
+  commissionRate     Float     @default(3)
+  commissionAmount   Float     @default(0)
+  partPaymentAmount  Float?
+  type               String    @default("Sale")
+  status             String    @default("Pending")
+  saleDate           DateTime?
+  dueDate            DateTime?
+  paidDate           DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   @@map("crm_commissions")
 }
 
 model CrmTrainingProgram {
-  id          String    @id @default(cuid())
-  title       String
-  category    String
-  trainer     String
-  targetRole  String    @default("All")
-  startDate   DateTime
-  endDate     DateTime?
-  venue       String?
-  capacity    Int       @default(20)
-  enrolled    Int       @default(0)
-  status      String    @default("Upcoming")
-  description String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  title           String
+  category        String
+  trainer         String
+  targetRole      String    @default("All")
+  startDate       DateTime
+  endDate         DateTime?
+  venue           String?
+  capacity        Int       @default(20)
+  enrolled        Int       @default(0)
+  status          String    @default("Upcoming")
+  description     String?
+  feePerPerson    Float?
+  billingContact  String?
+  billingCompany  String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@map("crm_training_programs")
 }
 
 model CrmDossier {
-  id             String   @id @default(cuid())
-  title          String
-  type           String
-  location       String
-  totalUnits     Int      @default(0)
-  priceFrom      Float    @default(0)
-  priceTo        Float    @default(0)
-  developer      String
-  completionDate String?
-  yieldEstimate  Float    @default(0)
-  targetInvestor String?
-  highlights     String?
-  status         String   @default("Active")
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id              String   @id @default(cuid())
+  title           String
+  type            String
+  location        String
+  totalUnits      Int      @default(0)
+  priceFrom       Float    @default(0)
+  priceTo         Float    @default(0)
+  developer       String
+  completionDate  String?
+  yieldEstimate   Float    @default(0)
+  targetInvestor  String?
+  highlights      String?
+  requesterName   String?
+  amountPaid      Float?
+  status          String   @default("Active")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("crm_dossiers")
 }

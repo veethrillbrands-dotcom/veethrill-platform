@@ -26,7 +26,8 @@ type Pipeline = {
 type Deal = {
   id: string; title: string; contactName: string; value: number;
   stage: string; probability: number; dueDate: string | null;
-  notes: string | null; pipelineId: string | null; pipelineStageId: string | null;
+  notes: string | null; productType: string | null;
+  pipelineId: string | null; pipelineStageId: string | null;
   contact: { id: string; name: string } | null;
   pipelineStage: Stage | null;
 };
@@ -253,7 +254,7 @@ function AddDealModal({ pipeline, contacts, onClose, onCreated }: {
   const [form, setForm] = useState({
     title: "", contactName: "", contactId: "", value: "",
     pipelineStageId: firstStage?.id ?? "",
-    dueDate: "", notes: "",
+    productType: "", dueDate: "", notes: "",
   });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -325,6 +326,16 @@ function AddDealModal({ pipeline, contacts, onClose, onCreated }: {
                 </button>
               ))}
             </div>
+          </div>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Product Type</label>
+            <select value={form.productType} onChange={(e) => set("productType", e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 bg-white">
+              <option value="">— None / General —</option>
+              {["Sale", "Rent", "Land Acquisition", "Advisory", "REIT", "Investment", "Buy-Back", "Training", "Subscriber", "Dossier"].map((t) => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Notes</label>

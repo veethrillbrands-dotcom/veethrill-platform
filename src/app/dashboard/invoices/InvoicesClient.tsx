@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/layout/Topbar";
 import { Badge } from "@/components/ui/badge";
@@ -24,12 +24,22 @@ function CreateInvoiceModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [contacts, setContacts] = useState<{ id: string; name: string; email: string | null; type: string }[]>([]);
   const [lineItems, setLineItems] = useState<LineItem[]>([{ description: "", qty: 1, unitPrice: 0 }]);
   const [form, setForm] = useState({
     type: "RENT", recipientName: "", recipientEmail: "", description: "",
     taxRate: "0", dueDate: "", notes: "",
   });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    fetch("/api/crm/contacts").then((r) => r.json()).then((d) => setContacts(Array.isArray(d) ? d : []));
+  }, []);
+
+  function pickContact(id: string) {
+    const c = contacts.find((c) => c.id === id);
+    if (c) { set("recipientName", c.name); set("recipientEmail", c.email ?? ""); }
+  }
 
   function addItem() { setLineItems((items) => [...items, { description: "", qty: 1, unitPrice: 0 }]); }
   function removeItem(i: number) { setLineItems((items) => items.filter((_, j) => j !== i)); }
@@ -84,9 +94,21 @@ function CreateInvoiceModal({ onClose }: { onClose: () => void }) {
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
             </div>
           </div>
+          {contacts.length > 0 && (
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Pick from Contacts</label>
+              <select onChange={(e) => pickContact(e.target.value)} defaultValue=""
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 bg-white">
+                <option value="">— Select a contact to auto-fill —</option>
+                {contacts.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} ({c.type}){c.email ? ` · ${c.email}` : ""}</option>
+                ))}
+              </select>
+            </div>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Recipient Name</label>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Recipient Name *</label>
               <input value={form.recipientName} onChange={(e) => set("recipientName", e.target.value)} placeholder="e.g. Chidi Okafor"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
             </div>

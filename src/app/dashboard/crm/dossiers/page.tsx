@@ -9,18 +9,27 @@ import { X, Building2, TrendingUp, MapPin, Users, Trash2 } from "lucide-react";
 type Dossier = {
   id: string; title: string; type: string; location: string; totalUnits: number;
   priceFrom: number; priceTo: number; developer: string; completionDate: string | null;
-  yieldEstimate: number; targetInvestor: string | null; highlights: string | null; status: string;
+  yieldEstimate: number; targetInvestor: string | null; highlights: string | null;
+  requesterName: string | null; amountPaid: number | null; status: string;
 };
 
-const STATUS_BADGE: Record<string, "success" | "warning" | "default"> = {
+const DOSSIER_STATUSES = [
+  "Active", "Coming Soon", "In Progress", "Sent", "Approved", "Paid",
+  "Complimentary", "Pending Payment", "Modifying", "Completed", "Sold",
+];
+
+const STATUS_BADGE: Record<string, "success" | "warning" | "default" | "info"> = {
   Active: "success", "Coming Soon": "warning", Sold: "default",
+  Paid: "success", Approved: "info", "In Progress": "info",
+  "Pending Payment": "warning", Modifying: "warning",
 };
 
 function AddDossierModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     title: "", type: "Residential", location: "", developer: "", totalUnits: "0",
-    priceFrom: "", priceTo: "", yieldEstimate: "0", completionDate: "", targetInvestor: "", highlights: "", status: "Active",
+    priceFrom: "", priceTo: "", yieldEstimate: "0", completionDate: "", targetInvestor: "",
+    highlights: "", requesterName: "", amountPaid: "", status: "Active",
   });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -56,7 +65,7 @@ function AddDossierModal({ onClose, onCreated }: { onClose: () => void; onCreate
               <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Status</label>
               <select value={form.status} onChange={(e) => set("status", e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400">
-                {["Active", "Coming Soon", "Sold"].map((s) => <option key={s}>{s}</option>)}
+                {DOSSIER_STATUSES.map((s) => <option key={s}>{s}</option>)}
               </select>
             </div>
           </div>
@@ -105,6 +114,18 @@ function AddDossierModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Target Investor</label>
             <input value={form.targetInvestor ?? ""} onChange={(e) => set("targetInvestor", e.target.value)} placeholder="e.g. HNI, Diaspora, Institutional"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Requester Name</label>
+              <input value={form.requesterName} onChange={(e) => set("requesterName", e.target.value)} placeholder="Who requested this dossier?"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Amount Paid (₦)</label>
+              <input type="number" value={form.amountPaid} onChange={(e) => set("amountPaid", e.target.value)} placeholder="0"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
           </div>
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Key Highlights</label>
@@ -216,6 +237,22 @@ export default function DossiersPage() {
                     </div>
                   </div>
 
+                  {(d.requesterName || d.amountPaid) && (
+                    <div className="mt-3 border-t border-gray-100 pt-3 grid grid-cols-2 gap-2">
+                      {d.requesterName && (
+                        <div>
+                          <div className="text-[9.5px] font-bold uppercase tracking-wider text-gray-400">Requester</div>
+                          <div className="text-[11.5px] font-semibold text-gray-800 mt-0.5 truncate">{d.requesterName}</div>
+                        </div>
+                      )}
+                      {d.amountPaid != null && (
+                        <div>
+                          <div className="text-[9.5px] font-bold uppercase tracking-wider text-gray-400">Amount Paid</div>
+                          <div className="text-[11.5px] font-semibold text-emerald-600 mt-0.5">{formatCurrency(d.amountPaid)}</div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {d.highlights && (
                     <div className="mt-3 border-t border-gray-100 pt-3">
                       <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5">Highlights</div>

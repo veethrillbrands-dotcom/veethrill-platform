@@ -10,6 +10,7 @@ type Program = {
   id: string; title: string; category: string; trainer: string; targetRole: string;
   startDate: string; endDate: string | null; status: string; enrolled: number; capacity: number;
   venue: string | null; description: string | null;
+  feePerPerson: number | null; billingContact: string | null; billingCompany: string | null;
 };
 
 const CATS = ["Sales", "Technology", "Technical", "Legal", "HR", "Marketing"];
@@ -24,7 +25,7 @@ const CAT_COLORS: Record<string, string> = {
 
 function AddProgramModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ title: "", category: "Sales", trainer: "", targetRole: "All", startDate: "", endDate: "", venue: "", capacity: "20", description: "" });
+  const [form, setForm] = useState({ title: "", category: "Sales", trainer: "", targetRole: "All", startDate: "", endDate: "", venue: "", capacity: "20", description: "", feePerPerson: "", billingContact: "", billingCompany: "" });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function save() {
@@ -96,6 +97,26 @@ function AddProgramModal({ onClose, onCreated }: { onClose: () => void; onCreate
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Description</label>
             <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={2}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 resize-none" />
+          </div>
+          <div className="border-t border-gray-100 pt-4">
+            <div className="text-[10.5px] font-bold uppercase tracking-wider text-gray-400 mb-3">Billing (Paid Service)</div>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Fee / Person (₦)</label>
+                <input type="number" value={form.feePerPerson} onChange={(e) => set("feePerPerson", e.target.value)} placeholder="0"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Billing Contact</label>
+                <input value={form.billingContact} onChange={(e) => set("billingContact", e.target.value)} placeholder="Name"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+              </div>
+              <div>
+                <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Billing Company</label>
+                <input value={form.billingCompany} onChange={(e) => set("billingCompany", e.target.value)} placeholder="Company"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+              </div>
+            </div>
           </div>
         </div>
         <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
