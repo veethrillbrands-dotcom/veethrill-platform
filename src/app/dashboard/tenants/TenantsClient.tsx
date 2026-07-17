@@ -34,11 +34,12 @@ function EditTenantModal({ tenant, onClose }: { tenant: Tenant; onClose: () => v
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/tenants/${tenant.id}`, {
+    const res = await fetch(`/api/tenants/${tenant.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(form),
     });
+    if (!res.ok) { setSaving(false); return; }
     setSuccess(true);
     setTimeout(() => { onClose(); router.refresh(); }, 1200);
   }

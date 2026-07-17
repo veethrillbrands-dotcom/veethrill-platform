@@ -152,7 +152,7 @@ export function WorkOrdersTable({ orders }: { orders: WorkOrder[] }) {
                       onChange={(e) => updateStatus(wo.id, e.target.value)}
                       onBlur={() => setEditingStatus(null)}
                       className="text-[11.5px] border border-yellow-400 rounded-lg px-2 py-1 bg-white outline-none">
-                      {STATUSES.map((s) => <option key={s}>{s.replace("_", " ")}</option>)}
+                      {STATUSES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
                     </select>
                   ) : (
                     <button onClick={() => setEditingStatus(wo.id)} title="Click to update status">

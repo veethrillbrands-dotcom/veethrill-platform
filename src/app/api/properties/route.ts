@@ -9,7 +9,7 @@ export async function GET() {
 
     const properties = await db.property.findMany({
       include: {
-        units: { select: { id: true, status: true, monthlyRent: true } },
+        units: { select: { id: true, unitNumber: true, status: true, monthlyRent: true } },
         _count: { select: { units: true, workOrders: true } },
       },
       orderBy: { createdAt: "desc" },

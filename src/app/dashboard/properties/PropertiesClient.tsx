@@ -8,7 +8,7 @@ import { Pencil, Trash2, X, CheckCircle } from "lucide-react";
 
 type Property = {
   id: string; name: string; type: string; address: string; city: string; state: string;
-  description: string | null;
+  description: string | null; status: string; occupancy?: number; monthlyRevenue?: number;
 };
 
 export function PropertiesTopbar() {
@@ -25,7 +25,7 @@ function EditPropertyModal({ property, onClose }: { property: Property; onClose:
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [form, setForm] = useState({ name: property.name, address: property.address, city: property.city, state: property.state, description: property.description ?? "" });
+  const [form, setForm] = useState({ name: property.name, address: property.address, city: property.city, state: property.state, description: property.description ?? "", status: property.status ?? "ACTIVE" });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function save() {
@@ -68,6 +68,35 @@ function EditPropertyModal({ property, onClose }: { property: Property; onClose:
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
             </div>
           ))}
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Status</label>
+            <select value={form.status} onChange={(e) => set("status", e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 bg-white">
+              {["ACTIVE", "INACTIVE", "UNDER_RENOVATION", "SOLD"].map((s) => (
+                <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+              ))}
+            </select>
+          </div>
+          {(property.occupancy !== undefined || property.monthlyRevenue !== undefined) && (
+            <div className="grid grid-cols-2 gap-3">
+              {property.occupancy !== undefined && (
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Occupancy</div>
+                  <div className="text-[18px] font-black text-gray-900">{property.occupancy}%</div>
+                  <div className="text-[10px] text-gray-400">computed from units</div>
+                </div>
+              )}
+              {property.monthlyRevenue !== undefined && (
+                <div className="bg-gray-50 rounded-xl p-3">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">Monthly Revenue</div>
+                  <div className="text-[15px] font-black text-gray-900">
+                    ₦{property.monthlyRevenue.toLocaleString()}
+                  </div>
+                  <div className="text-[10px] text-gray-400">from occupied units</div>
+                </div>
+              )}
+            </div>
+          )}
           <div>
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Description</label>
             <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={2}

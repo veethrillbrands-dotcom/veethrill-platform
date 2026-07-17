@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useUser } from "@clerk/nextjs";
 import { Topbar } from "@/components/layout/Topbar";
 import { FolderOpen, FileText, Upload, Search, Download, Trash2, File, X, CheckSquare } from "lucide-react";
 
@@ -41,39 +42,63 @@ function getFileType(name: string): string {
   return "file";
 }
 
-function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded: () => void }) {
+function UploadModal({ onClose, onUploaded, uploaderName }: { onClose: () => void; onUploaded: () => void; uploaderName: string }) {
   const [saving, setSaving] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const [files, setFiles] = useState<{ name: string; size: number; type: string }[]>([]);
+  const [files, setFiles] = useState<{ name: string; size: number; type: string; file: File }[]>([]);
   const [folder, setFolder] = useState("General");
-  const [uploadedBy, setUploadedBy] = useState("Amara Okonkwo");
+  const [uploadError, setUploadError] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   function addFiles(fileList: FileList | null) {
     if (!fileList) return;
-    setFiles((prev) => [...prev, ...[...fileList].map((f) => ({ name: f.name, size: f.size, type: getFileType(f.name) }))]);
+    setFiles((prev) => [...prev, ...[...fileList].map((f) => ({ name: f.name, size: f.size, type: getFileType(f.name), file: f }))]);
   }
 
   async function upload() {
     if (!files.length) return;
     setSaving(true);
-    await Promise.all(files.map((f) =>
-      fetch("/api/documents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: f.name,
-          url: `/uploads/${encodeURIComponent(f.name)}`,
-          type: f.type,
-          folder,
-          size: f.size,
-          uploadedBy,
-        }),
-      })
-    ));
-    setSaving(false);
-    onUploaded();
-    onClose();
+    setUploadError("");
+
+    const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
+    const uploadPreset = process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET;
+
+    try {
+      await Promise.all(files.map(async (f) => {
+        let fileUrl = "";
+
+        if (cloudName && uploadPreset) {
+          const fd = new FormData();
+          fd.append("file", f.file);
+          fd.append("upload_preset", uploadPreset);
+          fd.append("folder", "veethrill-docs");
+          const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`, {
+            method: "POST", body: fd,
+          });
+          if (res.ok) {
+            const data = await res.json();
+            fileUrl = data.secure_url ?? "";
+          } else {
+            throw new Error("Cloudinary upload failed");
+          }
+        } else {
+          throw new Error("File storage not configured. Add NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME and NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET to your environment variables.");
+        }
+
+        return fetch("/api/documents", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: f.name, url: fileUrl, type: f.type, folder, size: f.size, uploadedBy: uploaderName }),
+        });
+      }));
+      onUploaded();
+      onClose();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Upload failed — please try again.";
+      setUploadError(msg);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -110,20 +135,25 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Folder</label>
-              <select value={folder} onChange={(e) => setFolder(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400">
-                {FOLDERS.map((f) => <option key={f.name} value={f.name}>{f.icon} {f.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Uploaded By</label>
-              <input value={uploadedBy} onChange={(e) => setUploadedBy(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
-            </div>
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Folder</label>
+            <select value={folder} onChange={(e) => setFolder(e.target.value)}
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400">
+              {FOLDERS.map((f) => <option key={f.name} value={f.name}>{f.icon} {f.name}</option>)}
+            </select>
           </div>
+
+          {!process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 text-[12px] text-yellow-800">
+              <strong>File storage not configured.</strong> Add <code>NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME</code> and <code>NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET</code> to your Netlify environment variables to enable real uploads.
+            </div>
+          )}
+
+          {uploadError && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-[12.5px] text-red-700 font-semibold">
+              {uploadError}
+            </div>
+          )}
         </div>
         <div className="px-6 pb-6 flex gap-3">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
@@ -139,6 +169,8 @@ function UploadModal({ onClose, onUploaded }: { onClose: () => void; onUploaded:
 }
 
 export default function DocumentsPage() {
+  const { user } = useUser();
+  const uploaderName = [user?.firstName, user?.lastName].filter(Boolean).join(" ") || "Admin";
   const [docs, setDocs] = useState<Doc[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -314,7 +346,7 @@ export default function DocumentsPage() {
         </div>
 
       </div>
-      {uploading && <UploadModal onClose={() => setUploading(false)} onUploaded={load} />}
+      {uploading && <UploadModal onClose={() => setUploading(false)} onUploaded={load} uploaderName={uploaderName} />}
     </div>
   );
 }

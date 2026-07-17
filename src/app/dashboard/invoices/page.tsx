@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { InvoicesTopbar, InvoiceRowActions } from "./InvoicesClient";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";

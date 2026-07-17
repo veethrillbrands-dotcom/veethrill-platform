@@ -10,6 +10,7 @@ export function AddTenantModal({ onClose }: Props) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     firstName: "", lastName: "", email: "", phone: "",
@@ -20,15 +21,23 @@ export function AddTenantModal({ onClose }: Props) {
 
   async function handleSubmit() {
     setSaving(true);
+    setError("");
     try {
-      await fetch("/api/tenants", {
+      const res = await fetch("/api/tenants", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(form),
       });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Failed to add tenant (${res.status})`);
+        setSaving(false);
+        return;
+      }
       setSuccess(true);
       setTimeout(() => { onClose(); router.refresh(); }, 1800);
     } catch {
+      setError("Network error — please try again.");
       setSaving(false);
     }
   }
@@ -96,6 +105,12 @@ export function AddTenantModal({ onClose }: Props) {
               placeholder="Dangote Group"
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
           </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-[12.5px] text-red-700 font-semibold">
+              {error}
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div>
