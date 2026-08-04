@@ -113,7 +113,7 @@ export default function SubscriptionsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/crm/subscriptions");
+    const res = await fetch("/api/crm/subscriptions", { cache: "no-store" });
     setSubs(await res.json());
     setLoading(false);
   }, []);
@@ -127,15 +127,16 @@ export default function SubscriptionsPage() {
   }
 
   async function del(id: string) {
+    setSubs((prev) => prev.filter((s) => s.id !== id));
     await fetch(`/api/crm/subscriptions/${id}`, { method: "DELETE" });
-    load();
   }
 
   async function bulkDelete() {
     if (!confirm(`Delete ${selected.size} subscribers?`)) return;
-    await Promise.all([...selected].map((id) => fetch(`/api/crm/subscriptions/${id}`, { method: "DELETE" })));
+    const ids = [...selected];
+    setSubs((prev) => prev.filter((s) => !ids.includes(s.id)));
     setSelected(new Set());
-    load();
+    await Promise.all(ids.map((id) => fetch(`/api/crm/subscriptions/${id}`, { method: "DELETE" })));
   }
 
   function toggleSelect(id: string) { setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; }); }

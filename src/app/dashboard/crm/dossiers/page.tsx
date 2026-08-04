@@ -153,7 +153,7 @@ export default function DossiersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/crm/dossiers");
+    const res = await fetch("/api/crm/dossiers", { cache: "no-store" });
     setDossiers(await res.json());
     setLoading(false);
   }, []);
@@ -162,8 +162,8 @@ export default function DossiersPage() {
 
   async function del(id: string) {
     if (!confirm("Delete this dossier?")) return;
+    setDossiers((prev) => prev.filter((d) => d.id !== id));
     await fetch(`/api/crm/dossiers/${id}`, { method: "DELETE" });
-    load();
   }
 
   const totalValue = dossiers.reduce((s, d) => s + d.priceTo, 0);

@@ -340,7 +340,7 @@ export default function TasksPage() {
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/crm/tasks");
+    const res = await fetch("/api/crm/tasks", { cache: "no-store" });
     setTasks(await res.json());
     setLoading(false);
   }, []);
@@ -369,8 +369,8 @@ export default function TasksPage() {
   }
 
   async function deleteTask(id: string) {
+    setTasks((prev) => prev.filter((t) => t.id !== id));
     await fetch(`/api/crm/tasks/${id}`, { method: "DELETE" });
-    loadTasks();
   }
 
   const now = new Date();

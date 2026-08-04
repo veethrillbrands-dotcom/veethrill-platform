@@ -180,7 +180,7 @@ export default function DocumentsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/documents");
+    const res = await fetch("/api/documents", { cache: "no-store" });
     const data = await res.json();
     setDocs(data);
     setLoading(false);
@@ -189,15 +189,16 @@ export default function DocumentsPage() {
   useEffect(() => { load(); }, [load]);
 
   async function del(id: string) {
+    setDocs((prev) => prev.filter((d) => d.id !== id));
     await fetch(`/api/documents/${id}`, { method: "DELETE" });
-    load();
   }
 
   async function bulkDelete() {
     if (!confirm(`Delete ${selected.size} documents?`)) return;
-    await Promise.all([...selected].map((id) => fetch(`/api/documents/${id}`, { method: "DELETE" })));
+    const ids = [...selected];
+    setDocs((prev) => prev.filter((d) => !ids.includes(d.id)));
     setSelected(new Set());
-    load();
+    await Promise.all(ids.map((id) => fetch(`/api/documents/${id}`, { method: "DELETE" })));
   }
 
   function toggleSelect(id: string) {

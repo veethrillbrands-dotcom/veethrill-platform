@@ -116,7 +116,7 @@ export default function TeamPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/crm/team");
+    const res = await fetch("/api/crm/team", { cache: "no-store" });
     setMembers(await res.json());
     setLoading(false);
   }, []);
@@ -130,8 +130,8 @@ export default function TeamPage() {
 
   async function del(id: string) {
     if (!confirm("Remove this team member?")) return;
+    setMembers((prev) => prev.filter((m) => m.id !== id));
     await fetch(`/api/crm/team/${id}`, { method: "DELETE" });
-    load();
   }
 
   const totalTarget = members.reduce((s, m) => s + m.target, 0);

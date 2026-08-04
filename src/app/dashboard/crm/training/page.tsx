@@ -138,7 +138,7 @@ export default function TrainingPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/crm/training");
+    const res = await fetch("/api/crm/training", { cache: "no-store" });
     setPrograms(await res.json());
     setLoading(false);
   }, []);
@@ -153,8 +153,8 @@ export default function TrainingPage() {
 
   async function del(id: string) {
     if (!confirm("Delete this training program?")) return;
+    setPrograms((prev) => prev.filter((p) => p.id !== id));
     await fetch(`/api/crm/training/${id}`, { method: "DELETE" });
-    load();
   }
 
   const upcoming = programs.filter((p) => p.status === "Upcoming").length;

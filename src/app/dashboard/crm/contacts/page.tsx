@@ -107,7 +107,7 @@ export default function ContactsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/crm/contacts");
+    const res = await fetch("/api/crm/contacts", { cache: "no-store" });
     setContacts(await res.json());
     setLoading(false);
   }, []);
@@ -115,15 +115,16 @@ export default function ContactsPage() {
   useEffect(() => { load(); }, [load]);
 
   async function deleteContact(id: string) {
+    setContacts((prev) => prev.filter((c) => c.id !== id));
     await fetch(`/api/crm/contacts/${id}`, { method: "DELETE" });
-    load();
   }
 
   async function bulkDelete() {
     if (!confirm(`Delete ${selected.size} contacts?`)) return;
-    await Promise.all([...selected].map((id) => fetch(`/api/crm/contacts/${id}`, { method: "DELETE" })));
+    const ids = [...selected];
+    setContacts((prev) => prev.filter((c) => !ids.includes(c.id)));
     setSelected(new Set());
-    load();
+    await Promise.all(ids.map((id) => fetch(`/api/crm/contacts/${id}`, { method: "DELETE" })));
   }
 
   function toggleSelect(id: string) {

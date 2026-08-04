@@ -147,7 +147,7 @@ export default function CommissionsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const res = await fetch("/api/crm/commissions");
+    const res = await fetch("/api/crm/commissions", { cache: "no-store" });
     setCommissions(await res.json());
     setLoading(false);
   }, []);
@@ -160,15 +160,16 @@ export default function CommissionsPage() {
   }
 
   async function del(id: string) {
+    setCommissions((prev) => prev.filter((c) => c.id !== id));
     await fetch(`/api/crm/commissions/${id}`, { method: "DELETE" });
-    load();
   }
 
   async function bulkDelete() {
     if (!confirm(`Delete ${selected.size} commission records?`)) return;
-    await Promise.all([...selected].map((id) => fetch(`/api/crm/commissions/${id}`, { method: "DELETE" })));
+    const ids = [...selected];
+    setCommissions((prev) => prev.filter((c) => !ids.includes(c.id)));
     setSelected(new Set());
-    load();
+    await Promise.all(ids.map((id) => fetch(`/api/crm/commissions/${id}`, { method: "DELETE" })));
   }
 
   function toggleSelect(id: string) {
