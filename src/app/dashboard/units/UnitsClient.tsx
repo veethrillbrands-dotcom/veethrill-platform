@@ -38,10 +38,120 @@ export function UnitsTopbar() {
   );
 }
 
+function EditUnitModal({ unit, onClose }: { unit: Unit; onClose: () => void }) {
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    unitNumber: unit.unitNumber, floor: String(unit.floor),
+    bedrooms: String(unit.bedrooms), bathrooms: String(unit.bathrooms),
+    sqMeters: unit.sqMeters != null ? String(unit.sqMeters) : "",
+    monthlyRent: String(unit.monthlyRent), depositAmount: String(unit.depositAmount),
+    nightlyRate: unit.nightlyRate != null ? String(unit.nightlyRate) : "",
+    status: unit.status,
+  });
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function save() {
+    setSaving(true);
+    await fetch(`/api/units/${unit.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...form,
+        floor: Number(form.floor), bedrooms: Number(form.bedrooms), bathrooms: Number(form.bathrooms),
+        sqMeters: form.sqMeters ? Number(form.sqMeters) : null,
+        monthlyRent: Number(form.monthlyRent), depositAmount: Number(form.depositAmount),
+        nightlyRate: form.nightlyRate ? Number(form.nightlyRate) : null,
+      }),
+    });
+    setSaving(false);
+    onClose();
+    router.refresh();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="px-6 py-5 border-b flex items-center justify-between flex-shrink-0" style={{ background: "var(--navy)" }}>
+          <div className="text-[15px] font-bold text-white">Edit Unit {unit.unitNumber}</div>
+          <button onClick={onClose} className="text-white/60 hover:text-white text-[22px] leading-none">×</button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Unit Number</label>
+              <input value={form.unitNumber} onChange={(e) => set("unitNumber", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Floor</label>
+              <input type="number" value={form.floor} onChange={(e) => set("floor", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Bedrooms</label>
+              <input type="number" value={form.bedrooms} onChange={(e) => set("bedrooms", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Bathrooms</label>
+              <input type="number" value={form.bathrooms} onChange={(e) => set("bathrooms", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Size (m²)</label>
+              <input type="number" value={form.sqMeters} onChange={(e) => set("sqMeters", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Monthly Rent (₦)</label>
+              <input type="number" value={form.monthlyRent} onChange={(e) => set("monthlyRent", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Deposit (₦)</label>
+              <input type="number" value={form.depositAmount} onChange={(e) => set("depositAmount", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Nightly Rate (₦, optional)</label>
+              <input type="number" value={form.nightlyRate} onChange={(e) => set("nightlyRate", e.target.value)}
+                placeholder="Leave blank if not shortlet"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Status</label>
+              <select value={form.status} onChange={(e) => set("status", e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none bg-white">
+                {STATUSES.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={save} disabled={saving}
+            className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40"
+            style={{ background: "var(--emerald)" }}>
+            {saving ? "Saving…" : "✓ Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function UnitsTable({ units }: { units: Unit[] }) {
   const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [editingUnit, setEditingUnit] = useState<Unit | null>(null);
 
   async function updateStatus(id: string, status: string) {
     setLoading(id);
@@ -112,8 +222,8 @@ export function UnitsTable({ units }: { units: Unit[] }) {
                   )}
                 </td>
                 <td className="px-4 py-3">
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingStatus(u.id)} title="Edit status"
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setEditingUnit(u)} title="Edit unit"
                       className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center">
                       <Pencil size={12} className="text-blue-600" />
                     </button>
@@ -129,5 +239,6 @@ export function UnitsTable({ units }: { units: Unit[] }) {
         </tbody>
       </table>
     </div>
+    {editingUnit && <EditUnitModal unit={editingUnit} onClose={() => setEditingUnit(null)} />}
   );
 }
