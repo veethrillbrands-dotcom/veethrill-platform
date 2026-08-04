@@ -40,15 +40,28 @@ export async function POST(req: Request) {
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { name, type, address, city, state, country, description, gpsLat, gpsLng } = body;
+    const { name, type, address, city, state, country, description, gpsLat, gpsLng, totalUnits } = body;
 
     if (!name || !type || !address || !city || !state) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const unitCount = Math.max(0, Number(totalUnits) || 0);
+
     const property = await db.property.create({
-      data: { name, type, address, city, state, country: country || "Nigeria", description, gpsLat, gpsLng },
+      data: { name, type, address, city, state, country: country || "Nigeria", description, gpsLat, gpsLng, totalUnits: unitCount },
     });
+
+    if (unitCount > 0) {
+      await db.unit.createMany({
+        data: Array.from({ length: unitCount }, (_, i) => ({
+          propertyId: property.id,
+          unitNumber: String(i + 1),
+          monthlyRent: 0,
+          depositAmount: 0,
+        })),
+      });
+    }
 
     return NextResponse.json(property, { status: 201 });
   } catch (error) {

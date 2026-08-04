@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import { X, Building2, TrendingUp, MapPin, Users, Trash2 } from "lucide-react";
+import { X, Building2, TrendingUp, MapPin, Users, Trash2, Pencil } from "lucide-react";
 
 type Dossier = {
   id: string; title: string; type: string; location: string; totalUnits: number;
@@ -146,10 +146,88 @@ function AddDossierModal({ onClose, onCreated }: { onClose: () => void; onCreate
   );
 }
 
+function EditDossierModal({ dossier, onClose, onSaved }: { dossier: Dossier; onClose: () => void; onSaved: (d: Dossier) => void }) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    title: dossier.title, type: dossier.type, location: dossier.location,
+    totalUnits: String(dossier.totalUnits), priceFrom: String(dossier.priceFrom), priceTo: String(dossier.priceTo),
+    developer: dossier.developer, completionDate: dossier.completionDate ?? "",
+    yieldEstimate: String(dossier.yieldEstimate), targetInvestor: dossier.targetInvestor ?? "",
+    highlights: dossier.highlights ?? "", requesterName: dossier.requesterName ?? "",
+    amountPaid: dossier.amountPaid != null ? String(dossier.amountPaid) : "", status: dossier.status,
+  });
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function save() {
+    setSaving(true);
+    const res = await fetch(`/api/crm/dossiers/${dossier.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+      ...form, totalUnits: Number(form.totalUnits), priceFrom: Number(form.priceFrom), priceTo: Number(form.priceTo),
+      yieldEstimate: Number(form.yieldEstimate), amountPaid: form.amountPaid ? Number(form.amountPaid) : null,
+    })});
+    if (res.ok) { const updated = await res.json(); onSaved(updated); onClose(); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="px-6 py-5 border-b flex items-center justify-between flex-shrink-0" style={{ background: "var(--navy)" }}>
+          <div className="text-[15px] font-bold text-white">Edit Dossier</div>
+          <button onClick={onClose} className="text-white/60 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto">
+          {[
+            { label: "Title *", key: "title", placeholder: "e.g. Lekki Phase 1 Estate" },
+            { label: "Location *", key: "location", placeholder: "e.g. Lekki, Lagos" },
+            { label: "Developer", key: "developer", placeholder: "Developer name" },
+            { label: "Completion Date", key: "completionDate", placeholder: "Q4 2026" },
+            { label: "Requester Name", key: "requesterName", placeholder: "Client name" },
+          ].map(({ label, key, placeholder }) => (
+            <div key={key}>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">{label}</label>
+              <input value={form[key as keyof typeof form]} onChange={(e) => set(key, e.target.value)} placeholder={placeholder}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+          ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Price From (₦)</label>
+              <input type="number" value={form.priceFrom} onChange={(e) => set("priceFrom", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Price To (₦)</label>
+              <input type="number" value={form.priceTo} onChange={(e) => set("priceTo", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Status</label>
+              <select value={form.status} onChange={(e) => set("status", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none bg-white">
+                {DOSSIER_STATUSES.map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Amount Paid (₦)</label>
+              <input type="number" value={form.amountPaid} onChange={(e) => set("amountPaid", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none" />
+            </div>
+          </div>
+        </div>
+        <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40" style={{ background: "var(--emerald)" }}>
+            {saving ? "Saving…" : "✓ Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DossiersPage() {
   const [dossiers, setDossiers] = useState<Dossier[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [editingDossier, setEditingDossier] = useState<Dossier | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,10 +276,16 @@ export default function DossiersPage() {
           <div className="grid grid-cols-3 gap-5">
             {dossiers.map((d) => (
               <div key={d.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden group relative">
-                <button onClick={() => del(d.id)}
-                  className="absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 hover:bg-red-100 transition-opacity bg-white/80 backdrop-blur-sm z-10">
-                  <Trash2 size={12} className="text-red-500" />
-                </button>
+                <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                  <button onClick={() => setEditingDossier(d)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-blue-100 bg-white/80 backdrop-blur-sm">
+                    <Pencil size={12} className="text-blue-600" />
+                  </button>
+                  <button onClick={() => del(d.id)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-red-100 bg-white/80 backdrop-blur-sm">
+                    <Trash2 size={12} className="text-red-500" />
+                  </button>
+                </div>
 
                 <div className="h-2" style={{ background: d.status === "Active" ? "var(--emerald)" : d.status === "Coming Soon" ? "var(--gold)" : "#94A3B8" }} />
 
@@ -271,6 +355,7 @@ export default function DossiersPage() {
 
       </div>
       {adding && <AddDossierModal onClose={() => setAdding(false)} onCreated={load} />}
+      {editingDossier && <EditDossierModal dossier={editingDossier} onClose={() => setEditingDossier(null)} onSaved={(updated) => { setDossiers((prev) => prev.map((d) => d.id === updated.id ? { ...d, ...updated } : d)); }} />}
     </div>
   );
 }

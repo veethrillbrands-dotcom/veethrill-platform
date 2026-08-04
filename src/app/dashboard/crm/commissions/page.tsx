@@ -5,7 +5,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency } from "@/lib/utils";
-import { X, DollarSign, CheckCircle, Clock, TrendingUp, Trash2 } from "lucide-react";
+import { X, DollarSign, CheckCircle, Clock, TrendingUp, Trash2, Pencil } from "lucide-react";
 
 type Commission = {
   id: string; agent: string; property: string; dealValue: number; commissionRate: number;
@@ -139,10 +139,87 @@ function AddCommissionModal({ onClose, onCreated }: { onClose: () => void; onCre
   );
 }
 
+function EditCommissionModal({ commission, onClose, onSaved }: { commission: Commission; onClose: () => void; onSaved: (c: Commission) => void }) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    agent: commission.agent, property: commission.property,
+    dealValue: String(commission.dealValue), commissionRate: String(commission.commissionRate),
+    partPaymentAmount: commission.partPaymentAmount != null ? String(commission.partPaymentAmount) : "",
+    type: commission.type, status: commission.status,
+    saleDate: commission.saleDate ? commission.saleDate.slice(0, 10) : "",
+    dueDate: commission.dueDate ? commission.dueDate.slice(0, 10) : "",
+  });
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function save() {
+    setSaving(true);
+    const res = await fetch(`/api/crm/commissions/${commission.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (res.ok) { const updated = await res.json(); onSaved(updated); onClose(); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="px-6 py-5 border-b flex items-center justify-between flex-shrink-0" style={{ background: "var(--navy)" }}>
+          <div className="text-[15px] font-bold text-white">Edit Commission</div>
+          <button onClick={onClose} className="text-white/60 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto">
+          {[
+            { label: "Agent Name", key: "agent", placeholder: "Agent name" },
+            { label: "Property / Deal", key: "property", placeholder: "Property or deal name" },
+            { label: "Deal Value (₦)", key: "dealValue", placeholder: "0" },
+            { label: "Commission Rate (%)", key: "commissionRate", placeholder: "3" },
+            { label: "Part Payment Amount (₦)", key: "partPaymentAmount", placeholder: "Optional" },
+          ].map(({ label, key, placeholder }) => (
+            <div key={key}>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">{label}</label>
+              <input value={form[key as keyof typeof form]} onChange={(e) => set(key, e.target.value)} placeholder={placeholder}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" type={["dealValue","commissionRate","partPaymentAmount"].includes(key) ? "number" : "text"} />
+            </div>
+          ))}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Type</label>
+              <select value={form.type} onChange={(e) => set("type", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none bg-white">
+                {["Sale", "Rent", "Advisory", "Referral"].map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Status</label>
+              <select value={form.status} onChange={(e) => set("status", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none bg-white">
+                {["Pending", "Partially Paid", "Paid", "Overdue"].map((s) => <option key={s}>{s}</option>)}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Sale Date</label>
+              <input type="date" value={form.saleDate} onChange={(e) => set("saleDate", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Due Date</label>
+              <input type="date" value={form.dueDate} onChange={(e) => set("dueDate", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none" />
+            </div>
+          </div>
+        </div>
+        <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={save} disabled={saving} className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40" style={{ background: "var(--emerald)" }}>
+            {saving ? "Saving…" : "✓ Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function CommissionsPage() {
   const [commissions, setCommissions] = useState<Commission[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
+  const [editingCommission, setEditingCommission] = useState<Commission | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const load = useCallback(async () => {
@@ -251,6 +328,10 @@ export default function CommissionsPage() {
                       <td className="px-4 py-3"><Badge variant={STATUS_BADGE[c.status] ?? "default"}>{c.status}</Badge></td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingCommission(c)}
+                            className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center">
+                            <Pencil size={11} className="text-blue-600" />
+                          </button>
                           {c.status !== "Paid" && (
                             <button onClick={() => markPaid(c.id)}
                               className="text-[11px] font-bold px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors whitespace-nowrap">
@@ -273,6 +354,7 @@ export default function CommissionsPage() {
 
       </div>
       {adding && <AddCommissionModal onClose={() => setAdding(false)} onCreated={load} />}
+      {editingCommission && <EditCommissionModal commission={editingCommission} onClose={() => setEditingCommission(null)} onSaved={(updated) => { setCommissions((prev) => prev.map((c) => c.id === updated.id ? { ...c, ...updated } : c)); }} />}
     </div>
   );
 }

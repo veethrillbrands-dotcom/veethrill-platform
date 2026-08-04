@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Topbar } from "@/components/layout/Topbar";
 import { Card, CardHeader, CardTitle, CardBody } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { X, Users, UserCheck, Building2, Globe, Trash2, MessageCircle, Phone, Mail, ChevronRight, Upload } from "lucide-react";
+import { X, Users, UserCheck, Building2, Globe, Trash2, MessageCircle, Phone, Mail, ChevronRight, Upload, Pencil } from "lucide-react";
 import { BulkUploadModal } from "@/components/modals/BulkUploadModal";
 import { getInitials } from "@/lib/utils";
 
@@ -96,11 +96,72 @@ function AddContactModal({ onClose, onCreated }: { onClose: () => void; onCreate
   );
 }
 
+function EditContactModal({ contact, onClose, onSaved }: { contact: Contact; onClose: () => void; onSaved: (updated: Contact) => void }) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({ name: contact.name, type: contact.type, email: contact.email ?? "", phone: contact.phone ?? "", company: contact.company ?? "", location: contact.location ?? "", source: contact.source ?? "Direct", notes: contact.notes ?? "" });
+  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  async function save() {
+    if (!form.name) return;
+    setSaving(true);
+    const res = await fetch(`/api/crm/contacts/${contact.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
+    if (res.ok) { const updated = await res.json(); onSaved(updated); onClose(); }
+    setSaving(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md mx-4 overflow-hidden max-h-[90vh] flex flex-col">
+        <div className="px-6 py-5 border-b flex items-center justify-between flex-shrink-0" style={{ background: "var(--navy)" }}>
+          <div className="text-[15px] font-bold text-white">Edit Contact</div>
+          <button onClick={onClose} className="text-white/60 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Full Name *</label>
+              <input value={form.name} onChange={(e) => set("name", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+            <div>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Type</label>
+              <select value={form.type} onChange={(e) => set("type", e.target.value)} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 bg-white">
+                {TYPES.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+          </div>
+          {[
+            { label: "Email", key: "email", placeholder: "email@example.com" },
+            { label: "Phone", key: "phone", placeholder: "+234 xxx xxx xxxx" },
+            { label: "Company", key: "company", placeholder: "Company name" },
+            { label: "Location", key: "location", placeholder: "City, State" },
+          ].map(({ label, key, placeholder }) => (
+            <div key={key}>
+              <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">{label}</label>
+              <input value={form[key as keyof typeof form]} onChange={(e) => set(key, e.target.value)} placeholder={placeholder} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400" />
+            </div>
+          ))}
+          <div>
+            <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Notes</label>
+            <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={2} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400 resize-none" />
+          </div>
+        </div>
+        <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={save} disabled={saving || !form.name} className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40" style={{ background: "var(--emerald)" }}>
+            {saving ? "Saving…" : "✓ Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ContactsPage() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -239,6 +300,10 @@ export default function ContactsPage() {
                       <td className="px-4 py-3 text-[12px] text-gray-500 max-w-[200px] truncate">{c.notes ?? "—"}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => setEditingContact(c)}
+                            className="w-7 h-7 rounded-lg bg-blue-50 hover:bg-blue-100 flex items-center justify-center transition-colors" title="Edit contact">
+                            <Pencil size={12} className="text-blue-600" />
+                          </button>
                           <Link href={`/dashboard/crm/contacts/${c.id}`}
                             className="w-7 h-7 rounded-lg bg-gray-50 hover:bg-gray-100 flex items-center justify-center transition-colors" title="View profile">
                             <ChevronRight size={12} className="text-gray-500" />
@@ -278,6 +343,7 @@ export default function ContactsPage() {
 
       </div>
       {adding && <AddContactModal onClose={() => setAdding(false)} onCreated={load} />}
+      {editingContact && <EditContactModal contact={editingContact} onClose={() => setEditingContact(null)} onSaved={(updated) => { setContacts((prev) => prev.map((c) => c.id === updated.id ? { ...c, ...updated } : c)); }} />}
       {importing && (
         <BulkUploadModal
           defaultEntity="contacts"

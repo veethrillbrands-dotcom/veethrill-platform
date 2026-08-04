@@ -8,12 +8,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     const { id } = await params;
     const body = await req.json();
-    const { status, paidDate } = body;
+    const { status, paidDate, agent, property, dealValue, commissionRate, partPaymentAmount, type, saleDate, dueDate } = body;
     const commission = await db.crmCommission.update({
       where: { id },
       data: {
         ...(status && { status }),
         ...(status === "Paid" && { paidDate: paidDate ? new Date(paidDate) : new Date() }),
+        ...(agent !== undefined && { agent }),
+        ...(property !== undefined && { property }),
+        ...(dealValue !== undefined && { dealValue: Number(dealValue), commissionAmount: Number(dealValue) * ((Number(commissionRate) || 3) / 100) }),
+        ...(commissionRate !== undefined && { commissionRate: Number(commissionRate) }),
+        ...(partPaymentAmount !== undefined && { partPaymentAmount: partPaymentAmount ? Number(partPaymentAmount) : null }),
+        ...(type !== undefined && { type }),
+        ...(saleDate !== undefined && { saleDate: saleDate ? new Date(saleDate) : null }),
+        ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
       },
     });
     return NextResponse.json(commission);
