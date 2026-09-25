@@ -174,6 +174,7 @@ export function UnitsTable({ units }: { units: Unit[] }) {
   }
 
   return (
+    <>
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
@@ -240,5 +241,6 @@ export function UnitsTable({ units }: { units: Unit[] }) {
       </table>
     </div>
     {editingUnit && <EditUnitModal unit={editingUnit} onClose={() => setEditingUnit(null)} />}
+    </>
   );
 }
