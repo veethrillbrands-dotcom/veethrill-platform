@@ -15,16 +15,24 @@ function AddOwnerModal({ onClose }: { onClose: () => void }) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState("");
   const [form, setForm] = useState({ firstName: "", lastName: "", email: "", phone: "", bankName: "", bankAccountNumber: "", bankAccountName: "" });
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
   async function save() {
     setSaving(true);
-    const res = await fetch("/api/owners", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
-    });
-    if (res.ok) { setSuccess(true); setTimeout(() => { onClose(); router.refresh(); }, 1200); }
-    else setSaving(false);
+    setError("");
+    try {
+      const res = await fetch("/api/owners", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form),
+      });
+      if (res.ok) { setSuccess(true); setTimeout(() => { onClose(); router.refresh(); }, 1200); }
+      else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? `Error ${res.status} — please try again`);
+        setSaving(false);
+      }
+    } catch { setError("Network error — please try again"); setSaving(false); }
   }
 
   if (success) return (
@@ -67,6 +75,7 @@ function AddOwnerModal({ onClose }: { onClose: () => void }) {
             </div>
           ))}
         </div>
+        {error && <div className="px-6 pb-2 text-[12px] text-red-600 font-semibold bg-red-50 mx-6 rounded-xl py-2.5">{error}</div>}
         <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
           <button onClick={save} disabled={saving || !form.firstName || !form.email}

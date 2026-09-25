@@ -20,6 +20,11 @@ const STATUS_BADGE: Record<string, "success" | "warning" | "error" | "default" |
 };
 const METHOD_ICON: Record<string, string> = {
   PAYSTACK: "🟢", FLUTTERWAVE: "🟡", STRIPE: "🔵", BANK_TRANSFER: "🏦", CASH: "💵",
+  POS_TRANSFER: "💳", CHEQUE: "📝",
+};
+const METHOD_LABEL: Record<string, string> = {
+  PAYSTACK: "Paystack", FLUTTERWAVE: "Flutterwave", STRIPE: "Stripe",
+  BANK_TRANSFER: "Bank Transfer", CASH: "Cash", POS_TRANSFER: "POS Transfer", CHEQUE: "Cheque",
 };
 
 export function PaymentsTopbar() {
@@ -130,7 +135,7 @@ export function PaymentsTable({ payments }: { payments: Payment[] }) {
               <td className="px-4 py-3">
                 <span className="text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">{p.type.replace("_", " ")}</span>
               </td>
-              <td className="px-4 py-3 text-[12px] text-gray-700">{METHOD_ICON[p.method] ?? "💳"} {p.method.replace("_", " ")}</td>
+              <td className="px-4 py-3 text-[12px] text-gray-700">{METHOD_ICON[p.method] ?? "💳"} {METHOD_LABEL[p.method] ?? p.method.replace(/_/g, " ")}</td>
               <td className="px-4 py-3">
                 <span className={`text-[14px] font-black ${p.status === "PAID" ? "text-emerald-600" : p.status === "OVERDUE" ? "text-red-600" : "text-gray-900"}`}>
                   {formatCurrency(p.amount)}
