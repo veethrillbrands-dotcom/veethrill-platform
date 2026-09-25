@@ -7,8 +7,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface Props { onClose: () => void; }
 
-const METHODS = ["PAYSTACK", "FLUTTERWAVE", "STRIPE", "BANK_TRANSFER", "CASH"];
-const TYPES = ["RENT", "DEPOSIT", "MAINTENANCE_FEE", "SHORTLET", "LATE_FEE", "OTHER"];
+const METHODS = ["PAYSTACK", "FLUTTERWAVE", "STRIPE", "BANK_TRANSFER", "CASH", "POS_TRANSFER", "CHEQUE"];
+const TYPES = ["RENT", "DEPOSIT", "MAINTENANCE", "SHORTLET", "LATE_FEE", "OTHER"];
 
 type Receipt = {
   reference: string; tenantName: string; amount: number; totalAmount: number; status: string;

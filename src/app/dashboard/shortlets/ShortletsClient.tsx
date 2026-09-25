@@ -120,7 +120,7 @@ function NewBookingModal({ onClose }: { onClose: () => void }) {
             <label className="text-[11px] font-bold uppercase tracking-wider text-gray-400 block mb-1.5">Source</label>
             <select value={form.source} onChange={(e) => set("source", e.target.value)}
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-[13px] outline-none focus:border-yellow-400">
-              {["DIRECT", "AIRBNB", "BOOKING_COM", "EXPEDIA", "OTHER"].map((s) => (
+              {["DIRECT", "AIRBNB", "BOOKING_COM", "EXPEDIA", "PROPERTYPRO", "ADVERT", "REFERRAL", "AGENT", "OTHER"].map((s) => (
                 <option key={s} value={s}>{s.replace("_", ".")}</option>
               ))}
             </select>

@@ -271,12 +271,154 @@ function CreateMeetingModal({ contacts, deals, properties, onClose, onCreated }:
   );
 }
 
+// ─── Edit Meeting Modal ───────────────────────────────────────────────────────
+
+function EditMeetingModal({ meeting, contacts, deals, properties, onClose, onSaved }: {
+  meeting: Meeting;
+  contacts: { id: string; name: string; type: string }[];
+  deals: { id: string; title: string; stage: string }[];
+  properties: { id: string; name: string; city: string }[];
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    title: meeting.title,
+    type: meeting.type as "PHYSICAL" | "VIRTUAL",
+    scheduledAt: new Date(meeting.scheduledAt).toISOString().slice(0, 16),
+    duration: String(meeting.duration),
+    location: meeting.location ?? "",
+    meetingUrl: meeting.meetingUrl ?? "",
+    brief: meeting.brief ?? "",
+    outcome: meeting.outcome ?? "",
+    contactId: meeting.contact?.id ?? "",
+    dealId: meeting.deal?.id ?? "",
+    propertyId: meeting.property?.id ?? "",
+    attendees: (meeting.attendees ?? []) as Attendee[],
+  });
+  const set = (k: string, v: unknown) => setForm((f) => ({ ...f, [k]: v }));
+  const [attendeeInput, setAttendeeInput] = useState({ name: "", email: "", role: "" });
+
+  function addAttendee() {
+    if (!attendeeInput.name.trim()) return;
+    set("attendees", [...form.attendees, { ...attendeeInput }]);
+    setAttendeeInput({ name: "", email: "", role: "" });
+  }
+
+  async function save() {
+    setSaving(true);
+    await fetch(`/api/crm/meetings/${meeting.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...form, duration: Number(form.duration), contactId: form.contactId || null, dealId: form.dealId || null, propertyId: form.propertyId || null }),
+    });
+    setSaving(false);
+    onSaved();
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden max-h-[95vh] flex flex-col">
+        <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between flex-shrink-0" style={{ background: "var(--navy)" }}>
+          <div className="text-[15px] font-bold text-white">Edit Meeting</div>
+          <button onClick={onClose} className="text-white/60 hover:text-white"><X size={20} /></button>
+        </div>
+        <div className="p-6 space-y-4 overflow-y-auto flex-1">
+          <style>{`.label-xs{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#9ca3af;margin-bottom:6px}.field{width:100%;border:1px solid #e5e7eb;border-radius:12px;padding:10px 14px;font-size:13px;outline:none;background:white}`}</style>
+          <div>
+            <label className="label-xs">Title *</label>
+            <input value={form.title} onChange={(e) => set("title", e.target.value)} className="field" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label-xs">Type</label>
+              <select value={form.type} onChange={(e) => set("type", e.target.value)} className="field">
+                <option value="PHYSICAL">Physical</option>
+                <option value="VIRTUAL">Virtual</option>
+              </select>
+            </div>
+            <div>
+              <label className="label-xs">Duration (mins)</label>
+              <input type="number" value={form.duration} onChange={(e) => set("duration", e.target.value)} className="field" />
+            </div>
+          </div>
+          <div>
+            <label className="label-xs">Date & Time</label>
+            <input type="datetime-local" value={form.scheduledAt} onChange={(e) => set("scheduledAt", e.target.value)} className="field" />
+          </div>
+          {form.type === "PHYSICAL"
+            ? <div><label className="label-xs">Location</label><input value={form.location} onChange={(e) => set("location", e.target.value)} className="field" /></div>
+            : <div><label className="label-xs">Meeting URL</label><input value={form.meetingUrl} onChange={(e) => set("meetingUrl", e.target.value)} className="field" /></div>}
+          <div>
+            <label className="label-xs">Agenda / Brief</label>
+            <textarea value={form.brief} onChange={(e) => set("brief", e.target.value)} rows={3} className="field resize-none" />
+          </div>
+          <div>
+            <label className="label-xs">Outcome (for completed meetings)</label>
+            <textarea value={form.outcome} onChange={(e) => set("outcome", e.target.value)} rows={2} className="field resize-none" />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div><label className="label-xs">Contact</label>
+              <select value={form.contactId} onChange={(e) => set("contactId", e.target.value)} className="field">
+                <option value="">— None —</option>
+                {contacts.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            </div>
+            <div><label className="label-xs">Deal</label>
+              <select value={form.dealId} onChange={(e) => set("dealId", e.target.value)} className="field">
+                <option value="">— None —</option>
+                {deals.map((d) => <option key={d.id} value={d.id}>{d.title}</option>)}
+              </select>
+            </div>
+            <div><label className="label-xs">Property</label>
+              <select value={form.propertyId} onChange={(e) => set("propertyId", e.target.value)} className="field">
+                <option value="">— None —</option>
+                {properties.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label className="label-xs">Attendees</label>
+            {form.attendees.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {form.attendees.map((a, i) => (
+                  <div key={i} className="flex items-center gap-1.5 bg-blue-50 border border-blue-100 rounded-xl px-3 py-1.5 text-[12px] font-semibold text-blue-800">
+                    {a.name}{a.role ? ` (${a.role})` : ""}
+                    <button onClick={() => set("attendees", form.attendees.filter((_, j) => j !== i))} className="text-blue-400 hover:text-red-500 ml-0.5">×</button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="grid grid-cols-3 gap-2">
+              <input value={attendeeInput.name} onChange={(e) => setAttendeeInput((f) => ({ ...f, name: e.target.value }))} placeholder="Name" className="field" />
+              <input value={attendeeInput.email} onChange={(e) => setAttendeeInput((f) => ({ ...f, email: e.target.value }))} placeholder="Email" className="field" />
+              <div className="flex gap-2">
+                <input value={attendeeInput.role} onChange={(e) => setAttendeeInput((f) => ({ ...f, role: e.target.value }))} placeholder="Role" className="field flex-1" />
+                <button onClick={addAttendee} disabled={!attendeeInput.name} className="px-3 rounded-xl text-white text-[12px] font-bold disabled:opacity-40" style={{ background: "var(--navy)" }}>+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="px-6 pb-6 flex gap-3 flex-shrink-0">
+          <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
+          <button onClick={save} disabled={saving || !form.title}
+            className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40" style={{ background: "var(--emerald)" }}>
+            {saving ? "Saving…" : "✓ Save Changes"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Meeting Card ─────────────────────────────────────────────────────────────
 
-function MeetingCard({ meeting, onStatusChange, onDelete }: {
+function MeetingCard({ meeting, onStatusChange, onDelete, onEdit }: {
   meeting: Meeting;
   onStatusChange: (id: string, status: string) => void;
   onDelete: (id: string) => void;
+  onEdit: (meeting: Meeting) => void;
 }) {
   const meta = STATUS_META[meeting.status] ?? STATUS_META.SCHEDULED;
   const StatusIcon = meta.icon;
@@ -407,6 +549,10 @@ function MeetingCard({ meeting, onStatusChange, onDelete }: {
                   <Clock size={11} /> Re-confirm
                 </button>
               )}
+              <button onClick={() => onEdit(meeting)}
+                className="flex items-center gap-1 text-[11.5px] font-bold px-3 py-1.5 rounded-xl bg-gray-50 hover:bg-gray-100 text-gray-600 transition-colors">
+                <Edit3 size={11} /> Edit
+              </button>
               <button onClick={() => onDelete(meeting.id)}
                 className="ml-auto flex items-center gap-1 text-[11px] font-semibold text-gray-400 hover:text-red-500 transition-colors">
                 <Trash2 size={11} /> Delete
@@ -430,6 +576,7 @@ export default function MeetingsPage() {
   const [properties, setProperties] = useState<{ id: string; name: string; city: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [editingMeeting, setEditingMeeting] = useState<Meeting | null>(null);
   const [filter, setFilter] = useState<typeof FILTERS[number]>("Upcoming");
 
   const load = useCallback(async () => {
@@ -535,7 +682,8 @@ export default function MeetingsPage() {
             {filtered.map((meeting) => (
               <MeetingCard key={meeting.id} meeting={meeting}
                 onStatusChange={updateStatus}
-                onDelete={deleteMeeting} />
+                onDelete={deleteMeeting}
+                onEdit={setEditingMeeting} />
             ))}
           </div>
         )}
@@ -545,6 +693,13 @@ export default function MeetingsPage() {
         <CreateMeetingModal
           contacts={contacts} deals={deals} properties={properties}
           onClose={() => setCreating(false)} onCreated={load}
+        />
+      )}
+      {editingMeeting && (
+        <EditMeetingModal
+          meeting={editingMeeting}
+          contacts={contacts} deals={deals} properties={properties}
+          onClose={() => setEditingMeeting(null)} onSaved={load}
         />
       )}
     </div>

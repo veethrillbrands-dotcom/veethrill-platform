@@ -7,7 +7,7 @@ export async function GET(req: NextRequest) {
   const pipelineId = searchParams.get("pipelineId");
 
   const deals = await db.crmDeal.findMany({
-    where: pipelineId ? { pipelineId } : {},
+    where: pipelineId ? { OR: [{ pipelineId }, { pipelineId: null }] } : {},
     include: {
       contact: { select: { id: true, name: true } },
       pipelineStage: true,

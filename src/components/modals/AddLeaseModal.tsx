@@ -23,7 +23,7 @@ export function AddLeaseModal({ onClose }: Props) {
   useEffect(() => {
     fetch("/api/tenants").then((r) => r.json()).then((d) => setTenants(Array.isArray(d) ? d : (d.tenants ?? [])));
     fetch("/api/properties").then((r) => r.json()).then((d) => {
-      const allUnits = (d.properties ?? []).flatMap((p: { units: { id: string; unitNumber: string; monthlyRent: number; status: string }[], name: string }) =>
+      const allUnits = (Array.isArray(d) ? d : (d.properties ?? [])).flatMap((p: { units: { id: string; unitNumber: string; monthlyRent: number; status: string }[], name: string }) =>
         (p.units ?? []).filter((u: { status: string }) => u.status === "VACANT").map((u: { id: string; unitNumber: string; monthlyRent: number; status: string }) => ({ ...u, property: { name: p.name } }))
       );
       setUnits(allUnits);

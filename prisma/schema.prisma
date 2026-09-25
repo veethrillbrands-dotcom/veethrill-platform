@@ -66,6 +66,8 @@ enum PaymentMethod {
   STRIPE
   BANK_TRANSFER
   CASH
+  POS_TRANSFER
+  CHEQUE
 }
 
 enum PaymentType {
@@ -133,6 +135,10 @@ enum BookingSource {
   BOOKING_COM
   EXPEDIA
   OTHER
+  PROPERTYPRO
+  ADVERT
+  REFERRAL
+  AGENT
 }
 
 // ─── MODELS ──────────────────────────────────────────────────────────────────

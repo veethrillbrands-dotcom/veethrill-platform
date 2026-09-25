@@ -2,6 +2,24 @@ import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
+export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+  try {
+    const { userId } = await auth();
+    if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const { id } = await params;
+    const lease = await db.lease.findUnique({ where: { id }, select: { unitId: true } });
+    await db.lease.delete({ where: { id } });
+    if (lease?.unitId) {
+      const remaining = await db.lease.count({ where: { unitId: lease.unitId, status: "ACTIVE" } });
+      if (remaining === 0) await db.unit.update({ where: { id: lease.unitId }, data: { status: "VACANT" } });
+    }
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error("[LEASE_DELETE]", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { userId } = await auth();

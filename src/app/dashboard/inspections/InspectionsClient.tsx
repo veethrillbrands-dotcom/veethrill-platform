@@ -185,7 +185,7 @@ function CompleteInspectionModal({ inspection, onClose }: { inspection: Inspecti
         </div>
         <div className="px-6 pb-6 flex gap-3">
           <button onClick={onClose} className="flex-1 py-3 rounded-xl border border-gray-200 text-[13px] font-bold text-gray-600 hover:bg-gray-50">Cancel</button>
-          <button onClick={save} disabled={saving || !form.findings}
+          <button onClick={save} disabled={saving}
             className="flex-1 py-3 rounded-xl text-[13px] font-bold text-white disabled:opacity-40"
             style={{ background: "var(--emerald)" }}>
             {saving ? "Saving…" : "✓ Mark Complete"}

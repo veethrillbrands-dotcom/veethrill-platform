@@ -6,7 +6,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { AddLeaseModal } from "@/components/modals/AddLeaseModal";
 import { Badge } from "@/components/ui/badge";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import { XCircle, RefreshCw, Eye, X, FileText } from "lucide-react";
+import { XCircle, RefreshCw, Eye, X, FileText, Trash2 } from "lucide-react";
 
 const STATUS_BADGE: Record<string, "success" | "warning" | "error" | "default" | "info"> = {
   ACTIVE: "success", PENDING: "warning", EXPIRED: "error", TERMINATED: "error", RENEWED: "info",
@@ -132,6 +132,14 @@ export function LeasesTable({ leases }: { leases: Lease[] }) {
     router.refresh();
   }
 
+  async function deleteLease(id: string) {
+    if (!confirm("Delete this lease record? This cannot be undone.")) return;
+    setLoading(id + "_del");
+    await fetch(`/api/leases/${id}`, { method: "DELETE" });
+    setLoading(null);
+    router.refresh();
+  }
+
   return (
     <>
       <div className="overflow-x-auto">
@@ -173,7 +181,7 @@ export function LeasesTable({ leases }: { leases: Lease[] }) {
                   </td>
                   <td className="px-4 py-3"><Badge variant={STATUS_BADGE[l.status] ?? "default"}>{l.status}</Badge></td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1">
                       <button onClick={() => setViewingLease(l)} title="View Details"
                         className="flex items-center gap-1 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 text-[10.5px] font-semibold text-blue-700 transition-colors">
                         <Eye size={10} />View
@@ -194,6 +202,10 @@ export function LeasesTable({ leases }: { leases: Lease[] }) {
                           </button>
                         </>
                       )}
+                      <button onClick={() => deleteLease(l.id)} disabled={loading === l.id + "_del"} title="Delete lease"
+                        className="w-6 h-6 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors">
+                        <Trash2 size={10} className="text-red-500" />
+                      </button>
                     </div>
                   </td>
                 </tr>
